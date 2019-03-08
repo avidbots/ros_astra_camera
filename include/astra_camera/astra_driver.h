@@ -73,7 +73,7 @@ private:
   void newDepthFrameCallback(sensor_msgs::ImagePtr image);
 
   // Methods to get calibration parameters for the various cameras
-  sensor_msgs::CameraInfoPtr getDefaultCameraInfo(int width, int height, double f) const;
+  sensor_msgs::CameraInfoPtr getDefaultCameraInfo(int width, int height, bool is_ir_camera) const;
   sensor_msgs::CameraInfoPtr getColorCameraInfo(int width, int height, ros::Time time) const;
   sensor_msgs::CameraInfoPtr getIRCameraInfo(int width, int height, ros::Time time) const;
   sensor_msgs::CameraInfoPtr getDepthCameraInfo(int width, int height, ros::Time time) const;
@@ -157,7 +157,9 @@ private:
   ros::Duration color_time_offset_;
   ros::Duration depth_time_offset_;
 
-  int data_skip_;
+  int ir_data_skip_;
+  int color_data_skip_;
+  int depth_data_skip_;
 
   int data_skip_ir_counter_;
   int data_skip_color_counter_;

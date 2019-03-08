@@ -33,6 +33,8 @@
 #ifndef ASTRA_DEVICE_H
 #define ASTRA_DEVICE_H
 
+#include "openni2/OpenNI.h"
+
 #include "astra_camera/astra_video_mode.h"
 
 #include "astra_camera/astra_exception.h"
@@ -108,6 +110,9 @@ public:
   const std::vector<AstraVideoMode>& getSupportedColorVideoModes() const;
   const std::vector<AstraVideoMode>& getSupportedDepthVideoModes() const;
 
+  OBCameraParams getCameraParameters() const;
+  void setCameraParameters(const OBCameraParams& params);
+
   bool isIRVideoModeSupported(const AstraVideoMode& video_mode) const;
   bool isColorVideoModeSupported(const AstraVideoMode& video_mode) const;
   bool isDepthVideoModeSupported(const AstraVideoMode& video_mode) const;
@@ -142,6 +147,7 @@ protected:
 
   boost::shared_ptr<openni::Device> openni_device_;
   boost::shared_ptr<openni::DeviceInfo> device_info_;
+  OBCameraParams device_params_;
 
   boost::shared_ptr<AstraFrameListener> ir_frame_listener;
   boost::shared_ptr<AstraFrameListener> color_frame_listener;
@@ -162,7 +168,6 @@ protected:
   bool image_registration_activated_;
 
   bool use_device_time_;
-
 };
 
 std::ostream& operator << (std::ostream& stream, const AstraDevice& device);
