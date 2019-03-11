@@ -280,7 +280,6 @@ void AstraDriver::configCb(Config &config, uint32_t level)
 
   use_device_time_ = config.use_device_time;
 
-  // Todo: add seperate data skip for all streaming modes
   ir_data_skip_ = config.ir_data_skip+1;
   color_data_skip_ = config.color_data_skip+1;
   depth_data_skip_ = config.depth_data_skip+1;
