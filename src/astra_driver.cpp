@@ -575,7 +575,7 @@ void AstraDriver::newDepthFrameCallback(sensor_msgs::ImagePtr image)
   }
 }
 
-// // Methods to get calibration parameters for the various cameras
+// Methods to get calibration parameters for the various cameras
 sensor_msgs::CameraInfoPtr AstraDriver::getDefaultCameraInfo(int width, int height, bool is_ir_camera) const
 {
   // left parameters are for IR camera, right parameters are for RBG camera
