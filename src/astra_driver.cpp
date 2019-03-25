@@ -68,7 +68,7 @@ AstraDriver::AstraDriver(ros::NodeHandle& n, ros::NodeHandle& pnh) :
 
   // Create service for enable/disable streaming
   ns_= std::string(depth_frame_id_, 0, depth_frame_id_.find("depth") - 1);
-  enable_streaming_srv_name_ = "/" + ns_ + "/pipeline_stream_enable";
+  enable_streaming_srv_name_ = "/" + ns_ + "/enable_streams";
   enable_streaming_srv_ = nh_.advertiseService(enable_streaming_srv_name_, &AstraDriver::EnableStreaming, this);
   enable_streaming_ = true;
 
