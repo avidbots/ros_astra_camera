@@ -67,9 +67,9 @@ AstraDriver::AstraDriver(ros::NodeHandle& n, ros::NodeHandle& pnh) :
   readConfigFromParameterServer();
 
   // Create service for enable/disable streaming
-  ns_= std::string(depth_frame_id_, 0, depth_frame_id_.find("depth") - 1);
-  enable_streaming_srv_name_ = "/" + ns_ + "/enable_streams";
-  enable_streaming_srv_ = nh_.advertiseService(enable_streaming_srv_name_, &AstraDriver::EnableStreaming, this);
+  ns_= std::string(depth_frame_id_, 0, depth_frame_id_.find("depth") - 1); // The ns_ is only used for logging info
+  auto private_nh = getPrivateNodeHandle();
+  enable_streaming_srv_ = private_nh.advertiseService("enable_streams", &AstraDriver::EnableStreaming, this);
   enable_streaming_ = true;
 
 #if MULTI_ASTRA
@@ -163,14 +163,16 @@ AstraDriver::AstraDriver(ros::NodeHandle& n, ros::NodeHandle& pnh) :
 bool AstraDriver::EnableStreaming(std_srvs::SetBool::Request &req, std_srvs::SetBool::Response &res)
 {
   ROS_INFO("%s::AstraDriver::EnableStreaming: START, req.data: %u, enable_streaming_: %u", ns_.c_str(), req.data, enable_streaming_);
-  if (!req.data && enable_streaming_) { // Disable streaming
+  if (!req.data && enable_streaming_) // Disable streaming
+  {
     enable_streaming_ = false;
     if (device_ && device_->isDepthStreamStarted()) device_->stopDepthStream();
     if (device_ && device_->isIRStreamStarted()) device_->stopIRStream();
     if (device_ && device_->isColorStreamStarted()) device_->stopColorStream();
   }
 
-  if (req.data && !enable_streaming_) { // Enable streaming
+  if (req.data && !enable_streaming_) // Enable streaming
+  {
     if (device_ && !device_->isDepthStreamStarted()) device_->startDepthStream();
     if (device_ && !device_->isIRStreamStarted()) device_->startIRStream();
     if (device_ && !device_->isColorStreamStarted()) device_->startColorStream();
