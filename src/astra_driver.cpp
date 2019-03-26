@@ -41,6 +41,8 @@
 #include <sys/shm.h>  
 #include <sensor_msgs/image_encodings.h>
 #include <sensor_msgs/distortion_models.h>
+#include <nodelet/nodelet.h>
+#include <ros/ros.h>
 
 #include <boost/date_time/posix_time/posix_time.hpp>
 #include <boost/thread/thread.hpp>
@@ -68,8 +70,7 @@ AstraDriver::AstraDriver(ros::NodeHandle& n, ros::NodeHandle& pnh) :
 
   // Create service for enable/disable streaming
   ns_= std::string(depth_frame_id_, 0, depth_frame_id_.find("depth") - 1); // The ns_ is only used for logging info
-  auto private_nh = getPrivateNodeHandle();
-  enable_streaming_srv_ = private_nh.advertiseService("enable_streams", &AstraDriver::EnableStreaming, this);
+  enable_streaming_srv_ = pnh_.advertiseService("enable_streams", &AstraDriver::EnableStreaming, this);
   enable_streaming_ = true;
 
 #if MULTI_ASTRA
