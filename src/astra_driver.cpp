@@ -33,6 +33,8 @@
 #include "astra_camera/astra_driver.h"
 #include "astra_camera/astra_exception.h"
 
+#include <openni2/OpenNI.h>
+
 #include <unistd.h>  
 #include <stdlib.h>  
 #include <stdio.h>  
@@ -278,7 +280,9 @@ void AstraDriver::configCb(Config &config, uint32_t level)
 
   use_device_time_ = config.use_device_time;
 
-  data_skip_ = config.data_skip+1;
+  ir_data_skip_ = config.ir_data_skip+1;
+  color_data_skip_ = config.color_data_skip+1;
+  depth_data_skip_ = config.depth_data_skip+1;
 
   applyConfigToOpenNIDevice();
 
@@ -482,7 +486,7 @@ void AstraDriver::depthConnectCb()
 
 void AstraDriver::newIRFrameCallback(sensor_msgs::ImagePtr image)
 {
-  if ((++data_skip_ir_counter_)%data_skip_==0)
+  if ((++data_skip_ir_counter_)%ir_data_skip_==0)
   {
     data_skip_ir_counter_ = 0;
 
@@ -498,7 +502,7 @@ void AstraDriver::newIRFrameCallback(sensor_msgs::ImagePtr image)
 
 void AstraDriver::newColorFrameCallback(sensor_msgs::ImagePtr image)
 {
-  if ((++data_skip_color_counter_)%data_skip_==0)
+  if ((++data_skip_color_counter_)%color_data_skip_==0)
   {
     data_skip_color_counter_ = 0;
 
@@ -514,7 +518,7 @@ void AstraDriver::newColorFrameCallback(sensor_msgs::ImagePtr image)
 
 void AstraDriver::newDepthFrameCallback(sensor_msgs::ImagePtr image)
 {
-  if ((++data_skip_depth_counter_)%data_skip_==0)
+  if ((++data_skip_depth_counter_)%depth_data_skip_==0)
   {
 
     data_skip_depth_counter_ = 0;
@@ -572,39 +576,58 @@ void AstraDriver::newDepthFrameCallback(sensor_msgs::ImagePtr image)
 }
 
 // Methods to get calibration parameters for the various cameras
-sensor_msgs::CameraInfoPtr AstraDriver::getDefaultCameraInfo(int width, int height, double f) const
+sensor_msgs::CameraInfoPtr AstraDriver::getDefaultCameraInfo(int width, int height, bool is_ir_camera) const
 {
+  // left parameters are for IR camera, right parameters are for RBG camera
   sensor_msgs::CameraInfoPtr info = boost::make_shared<sensor_msgs::CameraInfo>();
+  OBCameraParams camera_params = device_->getCameraParameters();
 
-  info->width  = width;
+  info->width = width;
   info->height = height;
 
-  // No distortion
-  info->D.resize(5, 0.0);
   info->distortion_model = sensor_msgs::distortion_models::PLUMB_BOB;
-
-  // Simple camera matrix: square pixels (fx = fy), principal point at center
+  info->D.resize(5);
+  
   info->K.assign(0.0);
-  info->K[0] = info->K[4] = f;
-  info->K[2] = (width / 2) - 0.5;
-  // Aspect ratio for the camera center on Astra (and other devices?) is 4/3
-  // This formula keeps the principal point the same in VGA and SXGA modes
-  info->K[5] = (width * (3./8.)) - 0.5;
   info->K[8] = 1.0;
 
-  // No separate rectified image plane, so R = I
-  info->R.assign(0.0);
-  info->R[0] = info->R[4] = info->R[8] = 1.0;
+  if (is_ir_camera) {
+    info->D.assign(camera_params.l_k, camera_params.l_k + 5);
+    info->K[0] = camera_params.l_intr_p[0]; // fx
+    info->K[2] = camera_params.l_intr_p[2]; // cx
+    info->K[4] = camera_params.l_intr_p[1]; // fy
+    info->K[5] = camera_params.l_intr_p[3]; // cy
+  } else {
+    info->D.assign(camera_params.r_k, camera_params.r_k + 5);
+    info->K[0] = camera_params.r_intr_p[0]; // fx
+    info->K[2] = camera_params.r_intr_p[2]; // cx
+    info->K[4] = camera_params.r_intr_p[1]; // fy
+    info->K[5] = camera_params.r_intr_p[3]; // cy
+  }
 
-  // Then P=K(I|0) = (K|0)
+  info->R[0] = camera_params.r2l_r[0];
+  info->R[1] = camera_params.r2l_r[1];
+  info->R[2] = camera_params.r2l_r[2];
+  info->R[3] = camera_params.r2l_r[3];
+  info->R[4] = camera_params.r2l_r[4];
+  info->R[5] = camera_params.r2l_r[5];
+  info->R[6] = camera_params.r2l_r[6];
+  info->R[7] = camera_params.r2l_r[7];
+  info->R[8] = camera_params.r2l_r[8];
+
   info->P.assign(0.0);
-  info->P[0]  = info->P[5] = f; // fx, fy
-  info->P[2]  = info->K[2];     // cx
-  info->P[6]  = info->K[5];     // cy
+  info->P[0] = info->K[0];  // fx
+  info->P[2] = info->K[2];  // cx
+  info->P[5] = info->K[4];  // fy
+  info->P[6] = info->K[5];  // cy
   info->P[10] = 1.0;
+  info->P[3] = camera_params.r2l_t[0];    // Tx
+  info->P[7] = camera_params.r2l_t[1];    // Ty
+  info->P[11] = camera_params.r2l_t[2];   // Tz
 
   return info;
 }
+
 
 /// @todo Use binning/ROI properly in publishing camera infos
 sensor_msgs::CameraInfoPtr AstraDriver::getColorCameraInfo(int width, int height, ros::Time time) const
@@ -618,13 +641,13 @@ sensor_msgs::CameraInfoPtr AstraDriver::getColorCameraInfo(int width, int height
     {
       // Use uncalibrated values
       ROS_WARN_ONCE("Image resolution doesn't match calibration of the RGB camera. Using default parameters.");
-      info = getDefaultCameraInfo(width, height, device_->getColorFocalLength(height));
+      info = getDefaultCameraInfo(width, height, false);
     }
   }
   else
   {
     // If uncalibrated, fill in default values
-    info = getDefaultCameraInfo(width, height, device_->getColorFocalLength(height));
+    info = getDefaultCameraInfo(width, height, false);
   }
 
   // Fill in header
@@ -646,13 +669,13 @@ sensor_msgs::CameraInfoPtr AstraDriver::getIRCameraInfo(int width, int height, r
     {
       // Use uncalibrated values
       ROS_WARN_ONCE("Image resolution doesn't match calibration of the IR camera. Using default parameters.");
-      info = getDefaultCameraInfo(width, height, device_->getIRFocalLength(height));
+      info = getDefaultCameraInfo(width, height, true);
     }
   }
   else
   {
     // If uncalibrated, fill in default values
-    info = getDefaultCameraInfo(width, height, device_->getDepthFocalLength(height));
+    info = getDefaultCameraInfo(width, height, true);
   }
 
   // Fill in header

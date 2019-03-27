@@ -78,6 +78,9 @@ AstraDevice::AstraDevice(const std::string& device_URI) throw (AstraException) :
   device_info_ = boost::make_shared<openni::DeviceInfo>();
   *device_info_ = openni_device_->getDeviceInfo();
 
+  int data_size = sizeof(OBCameraParams);
+  openni_device_->getProperty(openni::OBEXTENSION_ID_CAM_PARAMS, (uint8_t*)&device_params_, &data_size);
+  
   ir_frame_listener = boost::make_shared<AstraFrameListener>();
   color_frame_listener = boost::make_shared<AstraFrameListener>();
   depth_frame_listener = boost::make_shared<AstraFrameListener>();
@@ -400,6 +403,18 @@ const std::vector<AstraVideoMode>& AstraDevice::getSupportedDepthVideoModes() co
   }
 
   return depth_video_modes_;
+}
+
+OBCameraParams AstraDevice::getCameraParameters() const
+{
+  return device_params_;
+}
+
+void AstraDevice::setCameraParameters(const OBCameraParams& params)
+{
+  int data_size = sizeof(OBCameraParams);
+  openni_device_->setProperty(OBEXTENSION_ID_CAM_PARAMS, (uint8_t*)&params, data_size);
+  openni_device_->getProperty(openni::OBEXTENSION_ID_CAM_PARAMS, (uint8_t*)&device_params_, &data_size);
 }
 
 bool AstraDevice::isImageRegistrationModeSupported() const
