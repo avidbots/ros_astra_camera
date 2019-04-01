@@ -175,8 +175,14 @@ bool AstraDriver::EnableStreaming(std_srvs::SetBool::Request &req, std_srvs::Set
   if (req.data && !enable_streaming_) // Enable streaming
   {
     if (device_ && !device_->isDepthStreamStarted()) device_->startDepthStream();
-    if (device_ && !device_->isIRStreamStarted()) device_->startIRStream();
-    if (device_ && !device_->isColorStreamStarted()) device_->startColorStream();
+    if (!rgb_preferred_)
+    {
+      if (device_ && !device_->isIRStreamStarted()) device_->startIRStream();
+    }
+    else
+    {
+      if (device_ && !device_->isColorStreamStarted()) device_->startColorStream();
+    }
     enable_streaming_ = true;
   }
 
