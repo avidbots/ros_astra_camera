@@ -175,8 +175,14 @@ bool AstraDriver::EnableStreaming(std_srvs::SetBool::Request &req, std_srvs::Set
   if (req.data && !enable_streaming_) // Enable streaming
   {
     if (device_ && !device_->isDepthStreamStarted()) device_->startDepthStream();
-    if (device_ && !device_->isIRStreamStarted()) device_->startIRStream();
-    if (device_ && !device_->isColorStreamStarted()) device_->startColorStream();
+    if (!rgb_preferred_)
+    {
+      if (device_ && !device_->isIRStreamStarted()) device_->startIRStream();
+    }
+    else
+    {
+      if (device_ && !device_->isColorStreamStarted()) device_->startColorStream();
+    }
     enable_streaming_ = true;
   }
 
@@ -629,14 +635,17 @@ sensor_msgs::CameraInfoPtr AstraDriver::getDefaultCameraInfo(int width, int heig
   info->K.assign(0.0);
   info->K[8] = 1.0;
 
+  // For now use no lens distortion parameters
+  info->D[0] = info->D[1] = info->D[2] = info->D[3] = info->D[4] = 0;
+
   if (is_ir_camera) {
-    info->D.assign(camera_params.l_k, camera_params.l_k + 5);
+    // info->D.assign(camera_params.l_k, camera_params.l_k + 5);
     info->K[0] = camera_params.l_intr_p[0]; // fx
     info->K[2] = camera_params.l_intr_p[2]; // cx
     info->K[4] = camera_params.l_intr_p[1]; // fy
     info->K[5] = camera_params.l_intr_p[3]; // cy
   } else {
-    info->D.assign(camera_params.r_k, camera_params.r_k + 5);
+    // info->D.assign(camera_params.r_k, camera_params.r_k + 5);
     info->K[0] = camera_params.r_intr_p[0]; // fx
     info->K[2] = camera_params.r_intr_p[2]; // cx
     info->K[4] = camera_params.r_intr_p[1]; // fy
