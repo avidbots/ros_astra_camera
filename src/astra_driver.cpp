@@ -46,6 +46,7 @@
 
 #include <boost/date_time/posix_time/posix_time.hpp>
 #include <boost/thread/thread.hpp>
+#include <boost/interprocess/sync/named_mutex.hpp>
 
 #define  MULTI_ASTRA 0 // Have to make sure no multiple cameras launching at the same time outside if it is 0
 namespace astra_wrapper
@@ -143,7 +144,13 @@ AstraDriver::AstraDriver(ros::NodeHandle& n, ros::NodeHandle& pnh) :
 	 	initDevice();
 	 }
 #else
+  namespace bi = boost::interprocess;
+  bi::named_mutex usb_mutex{bi::open_or_create, "usb_mutex"};
+  usb_mutex.lock();
+
   initDevice();
+
+  usb_mutex.unlock();
 
 #endif
   // Initialize dynamic reconfigure
