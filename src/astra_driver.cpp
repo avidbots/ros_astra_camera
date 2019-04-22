@@ -164,8 +164,8 @@ AstraDriver::AstraDriver(ros::NodeHandle& n, ros::NodeHandle& pnh) :
   }
   ROS_DEBUG("Dynamic reconfigure configuration received.");
 
+  setHealthTimers();
   advertiseROSTopics();
-
 }
 
 bool AstraDriver::EnableStreaming(std_srvs::SetBool::Request &req, std_srvs::SetBool::Response &res)
@@ -181,7 +181,11 @@ bool AstraDriver::EnableStreaming(std_srvs::SetBool::Request &req, std_srvs::Set
 
   if (req.data && !enable_streaming_) // Enable streaming
   {
-    if (device_ && !device_->isDepthStreamStarted()) device_->startDepthStream();
+    if (device_ && !device_->isDepthStreamStarted())
+    {
+      device_->startDepthStream();
+      depth_callback_timer_.start();
+    }
     if (!rgb_preferred_)
     {
       if (device_ && !device_->isIRStreamStarted()) device_->startIRStream();
@@ -197,6 +201,18 @@ bool AstraDriver::EnableStreaming(std_srvs::SetBool::Request &req, std_srvs::Set
   res.success = true;
   res.message = enable_streaming_ ? "Enabled streaming" : "Disabled streaming";
   return true;
+}
+
+void AstraDriver::setHealthTimers() {
+  auto reset_this = [this](const ros::TimerEvent&) -> void
+  {
+    ROS_WARN_STREAM("Astra " << ns_ << " driver timeout! Resetting");
+    auto& nh = nh_;
+    auto& pnh = pnh_;
+    this->~AstraDriver();
+    new (this) AstraDriver(nh, pnh);
+  };
+  depth_callback_timer_ = nh_.createTimer(depth_callback_timeout_, reset_this, false, false);
 }
 
 void AstraDriver::advertiseROSTopics()
@@ -526,6 +542,7 @@ void AstraDriver::depthConnectCb()
     if (enable_streaming_) {
       ROS_INFO("Starting depth stream.");
       device_->startDepthStream();
+      depth_callback_timer_.start();
     }
   }
   else if (!need_depth && device_->isDepthStreamStarted())
@@ -569,6 +586,7 @@ void AstraDriver::newColorFrameCallback(sensor_msgs::ImagePtr image)
 
 void AstraDriver::newDepthFrameCallback(sensor_msgs::ImagePtr image)
 {
+  depth_callback_timer_.setPeriod(depth_callback_timeout_, true);
   if ((++data_skip_depth_counter_)%depth_data_skip_==0)
   {
 
@@ -787,7 +805,9 @@ void AstraDriver::readConfigFromParameterServer()
 
   pnh_.param("rgb_camera_info_url", color_info_url_, std::string());
   pnh_.param("depth_camera_info_url", ir_info_url_, std::string());
-
+  double depth_callback_timeout = 30; // seconds
+  pnh_.param("depth_callback_timeout", depth_callback_timeout, depth_callback_timeout);
+  depth_callback_timeout_ = ros::Duration(depth_callback_timeout);
 }
 
 std::string AstraDriver::resolveDeviceURI(const std::string& device_id) throw(AstraException)

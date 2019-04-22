@@ -86,6 +86,7 @@ private:
   std::string resolveDeviceURI(const std::string& device_id) throw(AstraException);
   void initDevice();
 
+  void setHealthTimers();
   void advertiseROSTopics();
 
   void imageConnectCb();
@@ -131,6 +132,8 @@ private:
   image_transport::CameraPublisher pub_depth_raw_;
   image_transport::CameraPublisher pub_ir_;
   ros::Publisher pub_projector_info_;
+  ros::Timer depth_callback_timer_;
+  ros::Duration depth_callback_timeout_;
 
   /** \brief Camera info manager objects. */
   boost::shared_ptr<camera_info_manager::CameraInfoManager> color_info_manager_, ir_info_manager_;
