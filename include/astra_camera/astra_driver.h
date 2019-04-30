@@ -63,7 +63,7 @@ namespace astra_wrapper
 class AstraDriver
 {
 public:
-  AstraDriver(ros::NodeHandle& n, ros::NodeHandle& pnh) ;
+  AstraDriver(const ros::NodeHandle& n, const ros::NodeHandle& pnh) ;
 
 private:
   typedef astra_camera::AstraConfig Config;
@@ -109,8 +109,8 @@ private:
 
   bool EnableStreaming(std_srvs::SetBool::Request &req, std_srvs::SetBool::Response &res);
 
-  ros::NodeHandle& nh_;
-  ros::NodeHandle& pnh_;
+  ros::NodeHandle nh_;
+  ros::NodeHandle pnh_;
 
   boost::shared_ptr<AstraDeviceManager> device_manager_;
   boost::shared_ptr<AstraDevice> device_;

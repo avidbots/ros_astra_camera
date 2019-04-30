@@ -52,7 +52,7 @@
 namespace astra_wrapper
 {
 
-AstraDriver::AstraDriver(ros::NodeHandle& n, ros::NodeHandle& pnh) :
+AstraDriver::AstraDriver(const ros::NodeHandle& n, const ros::NodeHandle& pnh) :
     nh_(n),
     pnh_(pnh),
     device_manager_(AstraDeviceManager::getSingelton()),
@@ -174,7 +174,11 @@ bool AstraDriver::EnableStreaming(std_srvs::SetBool::Request &req, std_srvs::Set
   if (!req.data && enable_streaming_) // Disable streaming
   {
     enable_streaming_ = false;
-    if (device_ && device_->isDepthStreamStarted()) device_->stopDepthStream();
+    if (device_ && device_->isDepthStreamStarted())
+    {
+      device_->stopDepthStream();
+      depth_callback_timer_.stop();
+    }
     if (device_ && device_->isIRStreamStarted()) device_->stopIRStream();
     if (device_ && device_->isColorStreamStarted()) device_->stopColorStream();
   }
@@ -207,8 +211,8 @@ void AstraDriver::setHealthTimers() {
   auto reset_this = [this](const ros::TimerEvent&) -> void
   {
     ROS_WARN_STREAM("Astra " << ns_ << " driver timeout! Resetting");
-    auto& nh = nh_;
-    auto& pnh = pnh_;
+    const auto nh = nh_;
+    const auto pnh = pnh_;
     this->~AstraDriver();
     new (this) AstraDriver(nh, pnh);
   };
