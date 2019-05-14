@@ -974,7 +974,7 @@ void AstraDriver::initDevice()
       if (!device_)
       {
         ROS_INFO("No matching device found.... waiting for devices. Reason: %s", exception.what());
-        boost::this_thread::sleep(boost::posix_time::seconds(3));
+        boost::this_thread::sleep(boost::posix_time::seconds(15));
         continue;
       }
       else
