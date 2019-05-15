@@ -149,6 +149,10 @@ AstraDriver::AstraDriver(const ros::NodeHandle& n, const ros::NodeHandle& pnh) :
   initDevice();
 
 #endif
+  device_->setDepthFrameCallback(boost::bind(&AstraDriver::newDepthFrameCallback, this, _1));
+  device_->setColorFrameCallback(boost::bind(&AstraDriver::newColorFrameCallback, this, _1));
+  device_->setIRFrameCallback(boost::bind(&AstraDriver::newIRFrameCallback, this, _1));
+
   // Initialize dynamic reconfigure
   reconfigure_server_.reset(new ReconfigureServer(pnh_));
   reconfigure_server_->setCallback(boost::bind(&AstraDriver::configCb, this, _1, _2));
@@ -479,8 +483,6 @@ void AstraDriver::imageConnectCb()
 
     if (!color_started)
     {
-      device_->setColorFrameCallback(boost::bind(&AstraDriver::newColorFrameCallback, this, _1));
-
       if (enable_streaming_) {
         ROS_INFO("Starting color stream.");
         device_->startColorStream();
@@ -501,8 +503,6 @@ void AstraDriver::imageConnectCb()
 
     if (!ir_started)
     {
-      device_->setIRFrameCallback(boost::bind(&AstraDriver::newIRFrameCallback, this, _1));
-
       if (enable_streaming_) {
         ROS_INFO("Starting IR stream.");
         device_->startIRStream();
@@ -536,9 +536,6 @@ void AstraDriver::depthConnectCb()
 
   if (need_depth && !device_->isDepthStreamStarted())
   {
-
-    device_->setDepthFrameCallback(boost::bind(&AstraDriver::newDepthFrameCallback, this, _1));
-
     if (enable_streaming_) {
       ROS_INFO("Starting depth stream.");
       device_->startDepthStream();
