@@ -47,6 +47,7 @@
 #include <boost/date_time/posix_time/posix_time.hpp>
 #include <boost/thread/thread.hpp>
 #include <boost/interprocess/sync/named_mutex.hpp>
+#include <boost/interprocess/sync/scoped_lock.hpp>
 
 #define  MULTI_ASTRA 0 // Have to make sure no multiple cameras launching at the same time outside if it is 0
 namespace astra_wrapper
@@ -144,13 +145,8 @@ AstraDriver::AstraDriver(const ros::NodeHandle& n, const ros::NodeHandle& pnh) :
 	 	initDevice();
 	 }
 #else
-  namespace bi = boost::interprocess;
-  bi::named_mutex usb_mutex{bi::open_or_create, "usb_mutex"};
-  usb_mutex.lock();
 
   initDevice();
-
-  usb_mutex.unlock();
 
 #endif
   // Initialize dynamic reconfigure
@@ -967,6 +963,10 @@ void AstraDriver::initDevice()
       	continue;
       }
       #endif
+      namespace bi = boost::interprocess;
+      bi::named_mutex usb_mutex{bi::open_or_create, "usb_mutex"};
+      bi::scoped_lock<bi::named_mutex> lock(usb_mutex);
+
       device_ = device_manager_->getDevice(device_URI);
     }
     catch (const AstraException& exception)
@@ -974,7 +974,7 @@ void AstraDriver::initDevice()
       if (!device_)
       {
         ROS_INFO("No matching device found.... waiting for devices. Reason: %s", exception.what());
-        boost::this_thread::sleep(boost::posix_time::seconds(3));
+        boost::this_thread::sleep(boost::posix_time::seconds(15));
         continue;
       }
       else
