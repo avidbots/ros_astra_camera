@@ -38,6 +38,7 @@
 #include <unistd.h>  
 #include <stdlib.h>  
 #include <stdio.h>  
+#include <mutex>
 #include <sys/shm.h>  
 #include <sensor_msgs/image_encodings.h>
 #include <sensor_msgs/distortion_models.h>
@@ -52,7 +53,7 @@
 namespace astra_wrapper
 {
 
-AstraDriver::AstraDriver(ros::NodeHandle& n, ros::NodeHandle& pnh) :
+AstraDriver::AstraDriver(ros::NodeHandle& n, ros::NodeHandle& pnh, const bool is_advanced) :
     nh_(n),
     pnh_(pnh),
     device_manager_(AstraDeviceManager::getSingelton()),
@@ -63,7 +64,8 @@ AstraDriver::AstraDriver(ros::NodeHandle& n, ros::NodeHandle& pnh) :
     ir_subscribers_(false),
     color_subscribers_(false),
     depth_subscribers_(false),
-    depth_raw_subscribers_(false)
+    depth_raw_subscribers_(false),
+    is_advanced_(is_advanced)
 {
   genVideoModeTableMap();
 
@@ -120,6 +122,7 @@ AstraDriver::AstraDriver(ros::NodeHandle& n, ros::NodeHandle& pnh) :
 			 ROS_INFO("*********** device_id %s already open device************************ ", device_id_.c_str());
 			*shm = (bootOrder+1);
 		}
+
 		if(  bootOrder==devnums )
 		{
 			if(shmdt(shm) == -1)  
@@ -146,11 +149,12 @@ AstraDriver::AstraDriver(ros::NodeHandle& n, ros::NodeHandle& pnh) :
 #else
   namespace bi = boost::interprocess;
   bi::named_mutex usb_mutex{bi::open_or_create, "usb_mutex"};
-  usb_mutex.lock();
+
+  //usb_mutex.lock();
 
   initDevice();
 
-  usb_mutex.unlock();
+  //usb_mutex.unlock();
 
 #endif
   // Initialize dynamic reconfigure
@@ -518,9 +522,10 @@ void AstraDriver::depthConnectCb()
 
   bool need_depth = depth_subscribers_ || depth_raw_subscribers_;
 
+  ROS_INFO("AstraDriver::depthConnectCb, is_advanced_: %d", is_advanced_);
+
   if (need_depth && !device_->isDepthStreamStarted())
   {
-
     device_->setDepthFrameCallback(boost::bind(&AstraDriver::newDepthFrameCallback, this, _1));
 
     if (enable_streaming_) {
@@ -943,7 +948,7 @@ void AstraDriver::initDevice()
       	continue;
       }
       #endif
-      device_ = device_manager_->getDevice(device_URI);
+      device_ = is_advanced_ ? device_manager_->getAdvancedDevice(device_URI) : device_manager_->getDevice(device_URI);
     }
     catch (const AstraException& exception)
     {

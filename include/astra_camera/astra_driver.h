@@ -52,6 +52,7 @@
 
 #include "astra_camera/astra_device_manager.h"
 #include "astra_camera/astra_device.h"
+#include "astra_camera/astra_advanced_device.h"
 #include "astra_camera/astra_video_mode.h"
 #include "astra_camera/GetSerial.h"
 
@@ -63,7 +64,7 @@ namespace astra_wrapper
 class AstraDriver
 {
 public:
-  AstraDriver(ros::NodeHandle& n, ros::NodeHandle& pnh) ;
+  AstraDriver(ros::NodeHandle& n, ros::NodeHandle& pnh, const bool is_advanced) ;
 
 private:
   typedef astra_camera::AstraConfig Config;
@@ -113,6 +114,7 @@ private:
 
   boost::shared_ptr<AstraDeviceManager> device_manager_;
   boost::shared_ptr<AstraDevice> device_;
+  boost::shared_ptr<AstraAdvancedDevice> advanced_device_;
 
   std::string device_id_;
 
@@ -188,6 +190,8 @@ private:
   std::string enable_streaming_srv_name_;
   bool enable_streaming_;
   std::string ns_;
+
+  bool is_advanced_;
 };
 
 }

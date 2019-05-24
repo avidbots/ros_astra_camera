@@ -46,7 +46,7 @@ public:
 private:
   virtual void onInit()
   {
-    lp.reset(new astra_wrapper::AstraDriver(getNodeHandle(), getPrivateNodeHandle()));
+    lp.reset(new astra_wrapper::AstraDriver(getNodeHandle(), getPrivateNodeHandle(), true));
   };
 
   boost::shared_ptr<astra_wrapper::AstraDriver> lp;

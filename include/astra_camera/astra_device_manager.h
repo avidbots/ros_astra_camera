@@ -46,6 +46,7 @@ namespace astra_wrapper
 
 class AstraDeviceListener;
 class AstraDevice;
+class AstraAdvancedDevice;
 
 class AstraDeviceManager
 {
@@ -61,6 +62,7 @@ public:
 
   boost::shared_ptr<AstraDevice> getAnyDevice();
   boost::shared_ptr<AstraDevice> getDevice(const std::string& device_URI);
+  boost::shared_ptr<AstraAdvancedDevice> getAdvancedDevice(const std::string& device_URI);
 
   std::string getSerial(const std::string& device_URI) const;
 

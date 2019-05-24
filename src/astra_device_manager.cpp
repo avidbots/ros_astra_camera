@@ -33,6 +33,7 @@
 #include "astra_camera/astra_device_manager.h"
 #include "astra_camera/astra_convert.h"
 #include "astra_camera/astra_device.h"
+#include "astra_camera/astra_advanced_device.h"
 #include "astra_camera/astra_exception.h"
 
 #include <boost/make_shared.hpp>
@@ -248,11 +249,17 @@ boost::shared_ptr<AstraDevice> AstraDeviceManager::getAnyDevice()
 {
   return boost::make_shared<AstraDevice>("");
 }
+
 boost::shared_ptr<AstraDevice> AstraDeviceManager::getDevice(const std::string& device_URI)
 {
   return boost::make_shared<AstraDevice>(device_URI);
 }
 
+boost::shared_ptr<AstraAdvancedDevice> AstraDeviceManager::getAdvancedDevice(const std::string& device_URI)
+{
+  ROS_INFO("AstraDeviceManager::getAdvancedDevice: %s", device_URI.c_str());
+  return boost::make_shared<AstraAdvancedDevice>(device_URI);
+}
 
 std::ostream& operator << (std::ostream& stream, const AstraDeviceManager& device_manager) {
 

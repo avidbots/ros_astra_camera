@@ -84,7 +84,6 @@ AstraDevice::AstraDevice(const std::string& device_URI) throw (AstraException) :
   ir_frame_listener = boost::make_shared<AstraFrameListener>();
   color_frame_listener = boost::make_shared<AstraFrameListener>();
   depth_frame_listener = boost::make_shared<AstraFrameListener>();
-
 }
 
 AstraDevice::~AstraDevice()
@@ -279,6 +278,7 @@ void AstraDevice::startColorStream()
 }
 void AstraDevice::startDepthStream()
 {
+  ROS_INFO("AstraDevice::startDepthStream, START");
   boost::shared_ptr<openni::VideoStream> stream = getDepthVideoStream();
 
   if (stream)
@@ -630,6 +630,7 @@ void AstraDevice::setColorFrameCallback(FrameCallbackFunction callback)
 
 void AstraDevice::setDepthFrameCallback(FrameCallbackFunction callback)
 {
+  ROS_INFO("1");
   depth_frame_listener->setCallback(callback);
 }
 

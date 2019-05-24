@@ -86,13 +86,13 @@ public:
 
   void startIRStream();
   void startColorStream();
-  void startDepthStream();
+  virtual void startDepthStream();
 
   void stopAllStreams();
 
   void stopIRStream();
   void stopColorStream();
-  void stopDepthStream();
+  virtual void stopDepthStream();
 
   bool isIRStreamStarted();
   bool isColorStreamStarted();
@@ -123,7 +123,7 @@ public:
 
   void setIRFrameCallback(FrameCallbackFunction callback);
   void setColorFrameCallback(FrameCallbackFunction callback);
-  void setDepthFrameCallback(FrameCallbackFunction callback);
+  virtual void setDepthFrameCallback(FrameCallbackFunction callback);
 
   float getIRFocalLength (int output_y_resolution) const;
   float getColorFocalLength (int output_y_resolution) const;
@@ -136,7 +136,7 @@ public:
   bool getAutoExposure() const;
   bool getAutoWhiteBalance() const;
 
-  void setUseDeviceTimer(bool enable);
+  virtual void setUseDeviceTimer(bool enable);
 
 protected:
   void shutdown();

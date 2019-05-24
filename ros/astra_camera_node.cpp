@@ -38,7 +38,7 @@ int main(int argc, char **argv){
   ros::NodeHandle n;
   ros::NodeHandle pnh("~");
 
-  astra_wrapper::AstraDriver drv(n, pnh);
+  astra_wrapper::AstraDriver drv(n, pnh, true);
 
   ros::spin();
 

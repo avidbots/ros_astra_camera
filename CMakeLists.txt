@@ -53,19 +53,23 @@ include_directories(include
                     ${catkin_INCLUDE_DIRS}
                     ${Boost_INCLUDE_DIRS}
                     3rdparty/OpenNI2/Include
+                    3rdparty/LibUSB/Include
                     )
 
 add_library(astra_wrapper
    src/astra_convert.cpp
    src/astra_device.cpp
+   src/astra_advanced_device.cpp
    src/astra_device_info.cpp
    src/astra_timer_filter.cpp
    src/astra_frame_listener.cpp
+   src/astra_frame_reader.cpp
    src/astra_device_manager.cpp
    src/astra_exception.cpp
    src/astra_video_mode.cpp
+   src/COBDevice.cpp
 )
-target_link_libraries(astra_wrapper ${catkin_LIBRARIES} -lOpenNI2
+target_link_libraries(astra_wrapper ${catkin_LIBRARIES} -lOpenNI2 -lrt -lusb-1.0
   ${Boost_LIBRARIES} )
 add_dependencies(astra_wrapper ${PROJECT_NAME}_gencfg ${PROJECT_NAME}_generate_messages_cpp)
 
