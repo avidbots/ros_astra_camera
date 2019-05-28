@@ -64,7 +64,7 @@ namespace astra_wrapper
 class AstraDriver
 {
 public:
-  AstraDriver(ros::NodeHandle& n, ros::NodeHandle& pnh, const bool is_advanced) ;
+  AstraDriver(ros::NodeHandle& n, ros::NodeHandle& pnh, const std::string& ns, const std::string& serial_no, const bool is_advanced) ;
 
 private:
   typedef astra_camera::AstraConfig Config;
@@ -109,14 +109,15 @@ private:
 
   bool EnableStreaming(std_srvs::SetBool::Request &req, std_srvs::SetBool::Response &res);
 
-  ros::NodeHandle& nh_;
-  ros::NodeHandle& pnh_;
+  ros::NodeHandle nh_;
+  ros::NodeHandle pnh_;
 
   boost::shared_ptr<AstraDeviceManager> device_manager_;
   boost::shared_ptr<AstraDevice> device_;
   boost::shared_ptr<AstraAdvancedDevice> advanced_device_;
 
   std::string device_id_;
+  std::string ns_;
 
   /** \brief get_serial server*/
   ros::ServiceServer get_serial_server;
@@ -166,10 +167,6 @@ private:
   int color_data_skip_;
   int depth_data_skip_;
 
-  int data_skip_ir_counter_;
-  int data_skip_color_counter_;
-  int data_skip_depth_counter_;
-
   bool rgb_preferred_;
 
   bool auto_exposure_;
@@ -189,7 +186,6 @@ private:
   ros::ServiceServer enable_streaming_srv_;
   std::string enable_streaming_srv_name_;
   bool enable_streaming_;
-  std::string ns_;
 
   bool is_advanced_;
 };

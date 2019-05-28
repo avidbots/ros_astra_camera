@@ -9,56 +9,71 @@
 #include <sensor_msgs/Image.h>
 #include <vector>
 #include <map>
-#include <boost/interprocess/shared_memory_object.hpp>
-#include <boost/interprocess/managed_shared_memory.hpp>
+#include <thread>
 #include <boost/make_shared.hpp>
-#include <boost/interprocess/sync/named_mutex.hpp>
-#include <boost/interprocess/sync/scoped_lock.hpp>
 
 namespace astra_wrapper
 {
-
-namespace bi = boost::interprocess;
 
 class AstraTimerFilter;
 
 class AstraFrameReader
 {
 public:
-  AstraFrameReader(const std::string& uri);
+  struct FrameContext
+  {
+    boost::shared_ptr<openni::VideoStream> video_stream;
+    openni::VideoFrameRef depth_frame;
+    COBDevice cob_device;
+    FrameCallbackFunction callback;
+
+    void TurnOnProjector(const bool turn_on)
+    {
+      uint16_t buf1(0), buf2(0);
+      buf1 = turn_on ? 1 : 0;
+      cob_device.SendCmd(85, &buf1, 2, &buf2, 2);
+    }
+  };
+
+  AstraFrameReader();
 
   virtual ~AstraFrameReader() {};
 
-  void setCallback(FrameCallbackFunction& callback)
+  static boost::shared_ptr<AstraFrameReader> getSingleton();
+
+  void setCallback(const std::string& uri, FrameCallbackFunction& callback)
   {
-    callback_ = callback;
+    if (frame_contexts_.find(uri) == frame_contexts_.end())
+    {
+      ROS_ERROR("AstraFrameReader::setCallback, %s hasn't been registered!", uri.c_str());
+      return;
+    }
+    frame_contexts_[uri]->callback = callback;
   }
 
   void setUseDeviceTimer(bool enable);
 
-  void Start(const boost::shared_ptr<openni::VideoStream>& stream_ptr);
+  void Start();
   void Stop();
 
+  void Register(const std::string& uri, const boost::shared_ptr<openni::VideoStream>& video_stream);
+  void Unregister(const std::string& uri);
+
 private:
-  FrameCallbackFunction callback_;
   bool user_device_timer_;
   boost::shared_ptr<AstraTimerFilter> timer_filter_;
   double prev_time_stamp_;
   bool reading_;
-  COBDevice cob_device_;
-  std::string uri_;
+  std::map<std::string, boost::shared_ptr<FrameContext>> frame_contexts_;
 
-  openni::VideoFrameRef depth_frame_;
+  //openni::VideoFrameRef depth_frame_;
+  std::thread reading_thread_;
 
-  //ros::Timer timer_;
-  //static boost::interprocess::named_mutex read_mutex_; //{bi::open_or_create, "astra_frame_read_mutex"};
+  static boost::shared_ptr<AstraFrameReader> singleton_;
 
-  //static managed_shared_memory managed_shm_;
-  bool* read_mutex_;
-  bi::managed_shared_memory shm_;
-
-  void ReadFrame(const boost::shared_ptr<openni::VideoStream>& video_stream, openni::VideoFrameRef& frame);
-  void TurnOnProjector(const bool turn_on);
+  void ReadFrames();
+  void ReadOneFrame(const std::string& uri, FrameContext& context);
+  void ReadOneFrame(FrameContext& context);
 };
 
 }

@@ -252,6 +252,7 @@ bool AstraDevice::hasDepthSensor() const
 
 void AstraDevice::startIRStream()
 {
+  ROS_INFO("AstraDevice::startIRStream");
   boost::shared_ptr<openni::VideoStream> stream = getIRVideoStream();
 
   if (stream)
@@ -266,6 +267,7 @@ void AstraDevice::startIRStream()
 
 void AstraDevice::startColorStream()
 {
+  ROS_INFO("AstraDevice::startColorStream");
   boost::shared_ptr<openni::VideoStream> stream = getColorVideoStream();
 
   if (stream)
@@ -630,7 +632,6 @@ void AstraDevice::setColorFrameCallback(FrameCallbackFunction callback)
 
 void AstraDevice::setDepthFrameCallback(FrameCallbackFunction callback)
 {
-  ROS_INFO("1");
   depth_frame_listener->setCallback(callback);
 }
 
@@ -738,5 +739,9 @@ std::ostream& operator <<(std::ostream& stream, const AstraDevice& device)
 
   return stream;
 }
+
+void AstraDevice::setIRDataSkip(const int data_skip) { ir_frame_listener->setDataSkip(data_skip); }
+void AstraDevice::setColorDataSkip(const int data_skip) { color_frame_listener->setDataSkip(data_skip); }
+void AstraDevice::setDepthDataSkip(const int data_skip) { depth_frame_listener->setDataSkip(data_skip); }
 
 }

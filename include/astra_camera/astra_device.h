@@ -121,6 +121,10 @@ public:
   void setColorVideoMode(const AstraVideoMode& video_mode) throw (AstraException);
   void setDepthVideoMode(const AstraVideoMode& video_mode) throw (AstraException);
 
+  void setIRDataSkip(const int data_skip);
+  void setColorDataSkip(const int data_skip);
+  void setDepthDataSkip(const int data_skip);
+
   void setIRFrameCallback(FrameCallbackFunction callback);
   void setColorFrameCallback(FrameCallbackFunction callback);
   virtual void setDepthFrameCallback(FrameCallbackFunction callback);

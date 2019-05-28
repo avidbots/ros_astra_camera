@@ -38,6 +38,13 @@ endif()
 generate_dynamic_reconfigure_options(cfg/Astra.cfg)
 add_service_files(FILES
   GetSerial.srv)
+
+add_message_files(
+  DIRECTORY msg
+  FILES
+  astra_registration_info.msg
+  )
+
 generate_messages()
 
 catkin_package(
@@ -75,6 +82,7 @@ add_dependencies(astra_wrapper ${PROJECT_NAME}_gencfg ${PROJECT_NAME}_generate_m
 
 add_library(astra_driver_lib
                 src/astra_driver.cpp
+                src/astra_multi_driver.cpp
 )
 target_link_libraries(astra_driver_lib astra_wrapper ${catkin_LIBRARIES} ${Boost_LIBRARIES} -lOpenNI2 )
 add_dependencies(astra_driver_lib ${PROJECT_NAME}_gencfg ${PROJECT_NAME}_generate_messages_cpp)

@@ -21,6 +21,8 @@ class AstraAdvancedDevice : public AstraDevice
 
  protected:
   boost::shared_ptr<AstraFrameReader> depth_frame_reader;
+  std::string uri_;
+  FrameCallbackFunction callback_;
 };
 
 }

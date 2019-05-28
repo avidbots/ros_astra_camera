@@ -250,15 +250,9 @@ boost::shared_ptr<AstraDevice> AstraDeviceManager::getAnyDevice()
   return boost::make_shared<AstraDevice>("");
 }
 
-boost::shared_ptr<AstraDevice> AstraDeviceManager::getDevice(const std::string& device_URI)
+boost::shared_ptr<AstraDevice> AstraDeviceManager::getDevice(const std::string& device_URI, const bool is_advanced)
 {
-  return boost::make_shared<AstraDevice>(device_URI);
-}
-
-boost::shared_ptr<AstraAdvancedDevice> AstraDeviceManager::getAdvancedDevice(const std::string& device_URI)
-{
-  ROS_INFO("AstraDeviceManager::getAdvancedDevice: %s", device_URI.c_str());
-  return boost::make_shared<AstraAdvancedDevice>(device_URI);
+  return is_advanced ? boost::make_shared<AstraAdvancedDevice>(device_URI) : boost::make_shared<AstraDevice>(device_URI);
 }
 
 std::ostream& operator << (std::ostream& stream, const AstraDeviceManager& device_manager) {

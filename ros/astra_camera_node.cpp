@@ -30,7 +30,8 @@
  *      Author: Tim Liu (liuhua@orbbec.com)
  */
 
-#include "astra_camera/astra_driver.h"
+//#include "astra_camera/astra_driver.h"
+#include "astra_camera/astra_multi_driver.h"
 
 int main(int argc, char **argv){
 
@@ -38,7 +39,8 @@ int main(int argc, char **argv){
   ros::NodeHandle n;
   ros::NodeHandle pnh("~");
 
-  astra_wrapper::AstraDriver drv(n, pnh, true);
+  //astra_wrapper::AstraDriver drv(n, pnh, false);
+  astra_wrapper::AstraMultiDriver drv(n, pnh);
 
   ros::spin();
 

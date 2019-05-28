@@ -30,7 +30,8 @@
  *      Author: Tim Liu (liuhua@orbbec.com)
  */
 
-#include "astra_camera/astra_driver.h"
+//#include "astra_camera/astra_driver.h"
+#include "astra_camera/astra_multi_driver.h"
 #include <nodelet/nodelet.h>
 
 namespace astra_camera
@@ -46,10 +47,13 @@ public:
 private:
   virtual void onInit()
   {
-    lp.reset(new astra_wrapper::AstraDriver(getNodeHandle(), getPrivateNodeHandle(), true));
+    ROS_INFO("AstraDriverNodelet::onInit");
+    lp.reset(new astra_wrapper::AstraMultiDriver(getNodeHandle(), getPrivateNodeHandle()));
+    //lp.reset(new astra_wrapper::AstraDriver(getNodeHandle(), getPrivateNodeHandle(), true));
   };
 
-  boost::shared_ptr<astra_wrapper::AstraDriver> lp;
+  //boost::shared_ptr<astra_wrapper::AstraDriver> lp;
+  boost::shared_ptr<astra_wrapper::AstraMultiDriver> lp;
 };
 
 }

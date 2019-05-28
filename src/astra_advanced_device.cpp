@@ -19,10 +19,12 @@ namespace astra_wrapper
 {
 
 AstraAdvancedDevice::AstraAdvancedDevice(const std::string& device_URI) throw (AstraException) : 
-  AstraDevice(device_URI)
+  AstraDevice(device_URI),
+  uri_(device_URI),
+  callback_(0)
 {
   ROS_INFO("AstraAdvancedDevice::AstraAdvancedDevice, START construct!");
-  depth_frame_reader = boost::make_shared<AstraFrameReader>(device_URI);
+  depth_frame_reader = AstraFrameReader::getSingleton();
 }
 
 AstraAdvancedDevice::~AstraAdvancedDevice()
@@ -43,7 +45,8 @@ void AstraAdvancedDevice::startDepthStream()
   {
     stream->setMirroringEnabled(false);
     stream->start();
-    depth_frame_reader->Start(stream);
+    depth_frame_reader->Register(uri_, stream);
+    depth_frame_reader->setCallback(uri_, callback_);
     depth_video_started_ = true;
   }
 }
@@ -73,7 +76,7 @@ void AstraAdvancedDevice::setUseDeviceTimer(bool enable)
 
 void AstraAdvancedDevice::setDepthFrameCallback(FrameCallbackFunction callback)
 {
-  depth_frame_reader->setCallback(callback);
+  callback_ = callback;
 }
 
 }

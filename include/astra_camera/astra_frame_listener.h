@@ -63,6 +63,8 @@ public:
 
   void setUseDeviceTimer(bool enable);
 
+  void setDataSkip(const int data_skip) { data_skip_counter_ = 0; data_skip_ = data_skip; }
+
 private:
   openni::VideoFrameRef m_frame;
 
@@ -72,6 +74,9 @@ private:
   boost::shared_ptr<AstraTimerFilter> timer_filter_;
 
   double prev_time_stamp_;
+
+  int data_skip_counter_;
+  int data_skip_;
 };
 
 }
