@@ -35,6 +35,7 @@
 
 int main(int argc, char **argv){
 
+  ROS_INFO("astra_camera_node init");
   ros::init(argc, argv, "astra_camera");
   ros::NodeHandle n;
   ros::NodeHandle pnh("~");

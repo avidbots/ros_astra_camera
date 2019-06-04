@@ -57,7 +57,7 @@ void AstraAdvancedDevice::stopDepthStream()
   if (depth_video_stream_.get() != 0)
   {
     depth_video_started_ = false;
-    depth_frame_reader->Stop();
+    depth_frame_reader->Unregister(uri_);
     depth_video_stream_->stop();
   }
 }

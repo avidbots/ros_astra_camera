@@ -386,9 +386,9 @@ void AstraDriver::setDepthVideoMode(const AstraVideoMode& depth_video_mode)
 
 void AstraDriver::applyConfigToOpenNIDevice()
 {
-  //device_->setIRDataSkip(ir_data_skip_);
-  //device_->setColorDataSkip(color_data_skip_);
-  //device_->setDepthDataSkip(depth_data_skip_);
+  device_->setIRDataSkip(ir_data_skip_);
+  device_->setColorDataSkip(color_data_skip_);
+  device_->setDepthDataSkip(depth_data_skip_);
 
   setIRVideoMode(ir_video_mode_);
   if (device_->hasColorSensor())

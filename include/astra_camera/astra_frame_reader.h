@@ -10,6 +10,7 @@
 #include <vector>
 #include <map>
 #include <thread>
+#include <mutex>
 #include <boost/make_shared.hpp>
 
 namespace astra_wrapper
@@ -66,8 +67,8 @@ private:
   bool reading_;
   std::map<std::string, boost::shared_ptr<FrameContext>> frame_contexts_;
 
-  //openni::VideoFrameRef depth_frame_;
   std::thread reading_thread_;
+  std::mutex mutex_;
 
   static boost::shared_ptr<AstraFrameReader> singleton_;
 
