@@ -205,7 +205,7 @@ void AstraFrameReader::Register(const std::string& uri, const boost::shared_ptr<
     context->cob_device.InitDevice();                                                                                                                                                 
     context->cob_device.OpenDevice(uri.c_str());
     frame_contexts_[uri] = context;
-    ROS_INFO("AstraFrameReader::Register, FINISHED", uri.c_str());
+    ROS_INFO("AstraFrameReader::Register, FINISHED, %s", uri.c_str());
   }
   mutex_.unlock();
 }

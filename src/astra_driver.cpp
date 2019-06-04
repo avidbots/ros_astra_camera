@@ -48,12 +48,13 @@
 #include <boost/date_time/posix_time/posix_time.hpp>
 #include <boost/thread/thread.hpp>
 #include <boost/interprocess/sync/named_mutex.hpp>
+#include <boost/interprocess/sync/scoped_lock.hpp>
 
 #define  MULTI_ASTRA 0 // Have to make sure no multiple cameras launching at the same time outside if it is 0
 namespace astra_wrapper
 {
 
-AstraDriver::AstraDriver(ros::NodeHandle& n, ros::NodeHandle& pnh, const std::string& ns, const std::string& serial_no, const bool is_advanced) :
+AstraDriver::AstraDriver(const ros::NodeHandle& n, const ros::NodeHandle& pnh, const std::string& ns, const std::string& serial_no, const bool is_advanced) :
     nh_(n),
     pnh_(pnh),
     device_manager_(AstraDeviceManager::getSingelton()),
@@ -145,16 +146,14 @@ AstraDriver::AstraDriver(ros::NodeHandle& n, ros::NodeHandle& pnh, const std::st
 	 	initDevice();
 	 }
 #else
-  namespace bi = boost::interprocess;
-  bi::named_mutex usb_mutex{bi::open_or_create, "usb_mutex"};
-
-  //usb_mutex.lock();
 
   initDevice();
 
-  //usb_mutex.unlock();
-
 #endif
+  device_->setDepthFrameCallback(boost::bind(&AstraDriver::newDepthFrameCallback, this, _1));
+  device_->setColorFrameCallback(boost::bind(&AstraDriver::newColorFrameCallback, this, _1));
+  device_->setIRFrameCallback(boost::bind(&AstraDriver::newIRFrameCallback, this, _1));
+
   // Initialize dynamic reconfigure
   reconfigure_server_.reset(new ReconfigureServer(pnh_));
   reconfigure_server_->setCallback(boost::bind(&AstraDriver::configCb, this, _1, _2));
@@ -166,8 +165,8 @@ AstraDriver::AstraDriver(ros::NodeHandle& n, ros::NodeHandle& pnh, const std::st
   }
   ROS_INFO("Dynamic reconfigure configuration received.");
 
+  setHealthTimers();
   advertiseROSTopics();
-
 }
 
 bool AstraDriver::EnableStreaming(std_srvs::SetBool::Request &req, std_srvs::SetBool::Response &res)
@@ -176,14 +175,22 @@ bool AstraDriver::EnableStreaming(std_srvs::SetBool::Request &req, std_srvs::Set
   if (!req.data && enable_streaming_) // Disable streaming
   {
     enable_streaming_ = false;
-    if (device_ && device_->isDepthStreamStarted()) device_->stopDepthStream();
+    if (device_ && device_->isDepthStreamStarted())
+    {
+      device_->stopDepthStream();
+      depth_callback_timer_.stop();
+    }
     if (device_ && device_->isIRStreamStarted()) device_->stopIRStream();
     if (device_ && device_->isColorStreamStarted()) device_->stopColorStream();
   }
 
   if (req.data && !enable_streaming_) // Enable streaming
   {
-    if (device_ && !device_->isDepthStreamStarted()) device_->startDepthStream();
+    if (device_ && !device_->isDepthStreamStarted())
+    {
+      device_->startDepthStream();
+      depth_callback_timer_.start();
+    }
     if (!rgb_preferred_)
     {
       if (device_ && !device_->isIRStreamStarted()) device_->startIRStream();
@@ -199,6 +206,21 @@ bool AstraDriver::EnableStreaming(std_srvs::SetBool::Request &req, std_srvs::Set
   res.success = true;
   res.message = enable_streaming_ ? "Enabled streaming" : "Disabled streaming";
   return true;
+}
+
+void AstraDriver::setHealthTimers() {
+  auto reset_this = [this](const ros::TimerEvent&) -> void
+  {
+    ROS_WARN_STREAM("Astra " << ns_ << " driver timeout! Resetting");
+    const auto nh = nh_;
+    const auto pnh = pnh_;
+    const auto ns = ns_;
+    const auto serial_no = device_id_;
+    const auto is_advanced = is_advanced_;
+    this->~AstraDriver();
+    new (this) AstraDriver(nh, pnh, ns, serial_no, is_advanced);
+  };
+  depth_callback_timer_ = nh_.createTimer(depth_callback_timeout_, reset_this, false, false);
 }
 
 void AstraDriver::advertiseROSTopics()
@@ -467,8 +489,6 @@ void AstraDriver::imageConnectCb()
 
     if (!color_started)
     {
-      device_->setColorFrameCallback(boost::bind(&AstraDriver::newColorFrameCallback, this, _1));
-
       if (enable_streaming_) {
         ROS_INFO("Starting color stream.");
         device_->startColorStream();
@@ -489,8 +509,6 @@ void AstraDriver::imageConnectCb()
 
     if (!ir_started)
     {
-      device_->setIRFrameCallback(boost::bind(&AstraDriver::newIRFrameCallback, this, _1));
-
       if (enable_streaming_) {
         ROS_INFO("Starting IR stream.");
         device_->startIRStream();
@@ -525,11 +543,10 @@ void AstraDriver::depthConnectCb()
 
   if (need_depth && !device_->isDepthStreamStarted())
   {
-    device_->setDepthFrameCallback(boost::bind(&AstraDriver::newDepthFrameCallback, this, _1));
-
     if (enable_streaming_) {
       ROS_INFO("Starting depth stream.");
       device_->startDepthStream();
+      depth_callback_timer_.start();
     }
   }
   else if (!need_depth && device_->isDepthStreamStarted())
@@ -563,6 +580,7 @@ void AstraDriver::newColorFrameCallback(sensor_msgs::ImagePtr image)
 
 void AstraDriver::newDepthFrameCallback(sensor_msgs::ImagePtr image)
 {
+  depth_callback_timer_.setPeriod(depth_callback_timeout_, true);
   if (depth_raw_subscribers_||depth_subscribers_||projector_info_subscribers_)
   {
     image->header.stamp = image->header.stamp + depth_time_offset_;
@@ -775,7 +793,9 @@ void AstraDriver::readConfigFromParameterServer()
 
   pnh_.param("rgb_camera_info_url", color_info_url_, std::string());
   pnh_.param("depth_camera_info_url", ir_info_url_, std::string());
-
+  double depth_callback_timeout = 30; // seconds
+  pnh_.param("depth_callback_timeout", depth_callback_timeout, depth_callback_timeout);
+  depth_callback_timeout_ = ros::Duration(depth_callback_timeout);
 }
 
 std::string AstraDriver::resolveDeviceURI(const std::string& device_id) throw(AstraException)
@@ -931,6 +951,10 @@ void AstraDriver::initDevice()
       	continue;
       }
       #endif
+      namespace bi = boost::interprocess;
+      bi::named_mutex usb_mutex{bi::open_or_create, "usb_mutex"};
+      bi::scoped_lock<bi::named_mutex> lock(usb_mutex);
+
       device_ = device_manager_->getDevice(device_URI, is_advanced_);
     }
     catch (const AstraException& exception)
@@ -938,7 +962,7 @@ void AstraDriver::initDevice()
       if (!device_)
       {
         ROS_INFO("No matching device found.... waiting for devices. Reason: %s", exception.what());
-        boost::this_thread::sleep(boost::posix_time::seconds(3));
+        boost::this_thread::sleep(boost::posix_time::seconds(15));
         continue;
       }
       else
