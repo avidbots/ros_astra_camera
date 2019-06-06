@@ -156,7 +156,7 @@ AstraDriver::AstraDriver(const ros::NodeHandle& n, const ros::NodeHandle& pnh, c
   device_->setIRFrameCallback(boost::bind(&AstraDriver::newIRFrameCallback, this, _1));
 
   // Initialize dynamic reconfigure
-  reconfigure_server_.reset(new ReconfigureServer(pnh_));
+  reconfigure_server_.reset(new ReconfigureServer(ros::NodeHandle("/" + ns_)));
   reconfigure_server_->setCallback(boost::bind(&AstraDriver::configCb, this, _1, _2));
 
   while (!config_init_)
@@ -174,7 +174,7 @@ AstraDriver::AstraDriver(const ros::NodeHandle& n, const ros::NodeHandle& pnh, c
 
 AstraDriver::~AstraDriver()
 {
-  ROS_INFO("AstraDriver::~AstraDriver");
+  ROS_INFO_STREAM(GetLogPrefix("AstraDriver", ns_));
   if (device_) device_->stopAllStreams();
   depth_callback_timer_.stop();
   pub_color_.shutdown();
@@ -189,7 +189,7 @@ AstraDriver::~AstraDriver()
 
 bool AstraDriver::EnableStreaming(std_srvs::SetBool::Request &req, std_srvs::SetBool::Response &res)
 {
-  ROS_INFO("%s::AstraDriver::EnableStreaming: START, req.data: %u, enable_streaming_: %u, rgb_preferred_: %u", ns_.c_str(), req.data, enable_streaming_, rgb_preferred_);
+  ROS_INFO_STREAM(GetLogPrefix("AstraDriver", ns_) << "START, req.data: "<< req.data << ", enable_streaming_: " << enable_streaming_ <<  ", rgb_preferred_: " << rgb_preferred_);
   if (!req.data && enable_streaming_) // Disable streaming
   {
     enable_streaming_ = false;
@@ -222,7 +222,7 @@ bool AstraDriver::EnableStreaming(std_srvs::SetBool::Request &req, std_srvs::Set
     enable_streaming_ = true;
   }
 
-  ROS_INFO("%s::AstraDriver::EnableStreaming: FINISHED, req.data: %u, enable_streaming_: %u", ns_.c_str(), req.data, enable_streaming_);
+  ROS_INFO_STREAM(GetLogPrefix("AstraDriver", ns_) << "FINISHED, req.data: " << req.data << ", enable_streaming_: " << enable_streaming_);
   res.success = true;
   res.message = enable_streaming_ ? "Enabled streaming" : "Disabled streaming";
   return true;
@@ -801,18 +801,18 @@ void AstraDriver::readConfigFromParameterServer()
   //}
 
   // Camera TF frames
-  pnh_.param("ir_frame_id", ir_frame_id_, std::string("/openni_ir_optical_frame"));
-  pnh_.param("rgb_frame_id", color_frame_id_, std::string("/openni_rgb_optical_frame"));
-  pnh_.param("depth_frame_id", depth_frame_id_, std::string("/openni_depth_optical_frame"));
+  pnh_.param("/" + ns_ + "/ir_frame_id", ir_frame_id_, std::string("/openni_ir_optical_frame"));
+  pnh_.param("/" + ns_ + "/rgb_frame_id", color_frame_id_, std::string("/openni_rgb_optical_frame"));
+  pnh_.param("/" + ns_ + "/depth_frame_id", depth_frame_id_, std::string("/openni_depth_optical_frame"));
 
   ROS_DEBUG("ir_frame_id = '%s' ", ir_frame_id_.c_str());
   ROS_DEBUG("rgb_frame_id = '%s' ", color_frame_id_.c_str());
   ROS_DEBUG("depth_frame_id = '%s' ", depth_frame_id_.c_str());
 
-  pnh_.param("rgb_camera_info_url", color_info_url_, std::string());
-  pnh_.param("depth_camera_info_url", ir_info_url_, std::string());
+  pnh_.param("/" + ns_ + "/rgb_camera_info_url", color_info_url_, std::string());
+  pnh_.param("/" + ns_ + "/depth_camera_info_url", ir_info_url_, std::string());
   double depth_callback_timeout = 30; // seconds
-  pnh_.param("depth_callback_timeout", depth_callback_timeout, depth_callback_timeout);
+  pnh_.param("/" + ns_ + "/depth_callback_timeout", depth_callback_timeout, depth_callback_timeout);
   depth_callback_timeout_ = ros::Duration(depth_callback_timeout);
 }
 
