@@ -16,7 +16,7 @@ AstraMultiDriver::AstraMultiDriver(ros::NodeHandle& n, ros::NodeHandle& pnh) :
 
 void AstraMultiDriver::RegistrationCallback(const astra_camera::astra_registration_info::ConstPtr& msg)
 {
-  ROS_INFO_STREAM(GetLogPrefix("AstraMultiDriver", msg->ns) << "serial_no: " << msg->serial_no << ", is_advanced: " << msg->is_advanced);
+  ROS_INFO_STREAM(GetLogPrefix("AstraMultiDriver", msg->ns) << "serial_no: " << msg->serial_no << ", is_advanced: " << (int)msg->is_advanced);
 
   std::string serial_no = msg->serial_no;
   serial_no.erase(0, 7); // Discard prefix "serial_"

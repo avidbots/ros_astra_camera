@@ -79,7 +79,6 @@ private:
 
   void ReadFrames();
   void ReadOneFrame(const std::string& uri, FrameContext& context);
-  void ReadOneFrame(FrameContext& context);
 };
 
 }
