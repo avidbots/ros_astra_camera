@@ -49,6 +49,8 @@
 #include <string>
 #include <vector>
 
+#define GetLogPrefix(class_name, ns) "ASTRA_DRIVER_LOG::" + std::string(class_name) + "::" + __func__ + "::" + std::string(ns) + ", "                                              
+
 namespace openni
 {
 class Device;

@@ -9,14 +9,14 @@ AstraMultiDriver::AstraMultiDriver(ros::NodeHandle& n, ros::NodeHandle& pnh) :
     pnh_(pnh),
     device_manager_(AstraDeviceManager::getSingelton())
 {
-  ROS_INFO("AstraMultiDriver::AstraMultiDriver");
+  ROS_INFO_STREAM(GetLogPrefix("AstraMultiDriver", ""));
 
   astra_register_sub_ = nh_.subscribe("/astra_registration", 1, &AstraMultiDriver::RegistrationCallback, this);
 }
 
 void AstraMultiDriver::RegistrationCallback(const astra_camera::astra_registration_info::ConstPtr& msg)
 {
-  ROS_INFO("AstraMultiDriver::RegistrationCallback, ns: %s, serial_no: %s, is_advanced: %d", msg->ns.c_str(), msg->serial_no.c_str(), msg->is_advanced);
+  ROS_INFO_STREAM(GetLogPrefix("AstraMultiDriver", msg->ns) << "serial_no: " << msg->serial_no << ", is_advanced: " << msg->is_advanced);
 
   std::string serial_no = msg->serial_no;
   serial_no.erase(0, 7); // Discard prefix "serial_"
@@ -26,7 +26,9 @@ void AstraMultiDriver::RegistrationCallback(const astra_camera::astra_registrati
   }
   else
   {
-    ROS_INFO("AstraMultiDriver::RegistrationCallback, %s had been registered!", serial_no.c_str());
+    ROS_INFO_STREAM(GetLogPrefix("AstraMultiDriver", msg->ns) << "had been registered, destory it frist, then create a new instance!");
+    astras_[serial_no] = nullptr; // Must do this to make sure the desconstruct will be called before creating a new instance
+    astras_[serial_no] = boost::make_shared<AstraDriver>(nh_, pnh_, msg->ns, serial_no, msg->is_advanced);
   }
 }
 

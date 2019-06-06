@@ -88,6 +88,7 @@ AstraDevice::AstraDevice(const std::string& device_URI) throw (AstraException) :
 
 AstraDevice::~AstraDevice()
 {
+  ROS_INFO("AstraDevice::~AstraDevice");
   stopAllStreams();
 
   shutdown();
@@ -312,6 +313,7 @@ void AstraDevice::stopIRStream()
 }
 void AstraDevice::stopColorStream()
 {
+  ROS_INFO("AstraDevice::stopColorStream");
   if (color_video_stream_.get() != 0)
   {
     color_video_started_ = false;

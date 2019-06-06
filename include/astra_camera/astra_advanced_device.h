@@ -2,16 +2,15 @@
 #define ASTRA_ADVANCED_DEVICE_H
 
 #include "astra_camera/astra_device.h"
+#include "astra_camera/astra_frame_reader.h"
 
 namespace astra_wrapper
 {
 
-class AstraFrameReader;
-
 class AstraAdvancedDevice : public AstraDevice
 {
  public: 
-  AstraAdvancedDevice(const std::string& device_URI) throw (AstraException);
+  AstraAdvancedDevice(const std::string& device_URI, const std::string& ns, const std::string& serial_no) throw (AstraException);
   virtual ~AstraAdvancedDevice();
 
   void startDepthStream();
@@ -20,8 +19,10 @@ class AstraAdvancedDevice : public AstraDevice
   void setUseDeviceTimer(bool enable);
 
  protected:
-  boost::shared_ptr<AstraFrameReader> depth_frame_reader;
+  boost::shared_ptr<AstraFrameReader> depth_frame_reader_;
   std::string uri_;
+  std::string ns_;
+  std::string serial_no_;
   FrameCallbackFunction callback_;
 };
 

@@ -24,6 +24,8 @@ public:
   struct FrameContext
   {
     boost::shared_ptr<openni::VideoStream> video_stream;
+    std::string ns;
+    std::string serial_no;
     openni::VideoFrameRef depth_frame;
     COBDevice cob_device;
     FrameCallbackFunction callback;
@@ -38,7 +40,7 @@ public:
 
   AstraFrameReader();
 
-  virtual ~AstraFrameReader() {};
+  virtual ~AstraFrameReader();
 
   static boost::shared_ptr<AstraFrameReader> getSingleton();
 
@@ -46,7 +48,7 @@ public:
   {
     if (frame_contexts_.find(uri) == frame_contexts_.end())
     {
-      ROS_ERROR("AstraFrameReader::setCallback, %s hasn't been registered!", uri.c_str());
+      ROS_ERROR_STREAM(GetLogPrefix("AstraFrameReader", uri) << "hasn't been registered!");
       return;
     }
     frame_contexts_[uri]->callback = callback;
@@ -57,7 +59,7 @@ public:
   void Start();
   void Stop();
 
-  void Register(const std::string& uri, const boost::shared_ptr<openni::VideoStream>& video_stream);
+  void Register(const std::string& uri, const std::string& ns, const std::string& serail_no, const boost::shared_ptr<openni::VideoStream>& video_stream);
   void Unregister(const std::string& uri);
 
 private:
@@ -65,10 +67,13 @@ private:
   boost::shared_ptr<AstraTimerFilter> timer_filter_;
   double prev_time_stamp_;
   bool reading_;
+  bool pause_;
+  bool paused_;
   std::map<std::string, boost::shared_ptr<FrameContext>> frame_contexts_;
 
   std::thread reading_thread_;
   std::mutex mutex_;
+  ros::Publisher reset_pub_;
 
   static boost::shared_ptr<AstraFrameReader> singleton_;
 

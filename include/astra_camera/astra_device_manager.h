@@ -61,8 +61,7 @@ public:
   std::size_t getNumOfConnectedDevices() const;
 
   boost::shared_ptr<AstraDevice> getAnyDevice();
-  boost::shared_ptr<AstraDevice> getDevice(const std::string& device_URI, const bool is_advanced = false);
-  //boost::shared_ptr<AstraAdvancedDevice> getAdvancedDevice(const std::string& device_URI);
+  boost::shared_ptr<AstraDevice> getDevice(const std::string& device_URI, const bool is_advanced = false, const std::string& ns = "", const std::string& serial_no = "");
 
   std::string getSerial(const std::string& device_URI) const;
 

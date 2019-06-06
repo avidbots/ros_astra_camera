@@ -32,6 +32,7 @@
 
 #include "astra_camera/astra_driver.h"
 #include "astra_camera/astra_exception.h"
+#include "astra_camera/astra_registration_info.h"
 
 #include <openni2/OpenNI.h>
 
@@ -167,11 +168,28 @@ AstraDriver::AstraDriver(const ros::NodeHandle& n, const ros::NodeHandle& pnh, c
 
   setHealthTimers();
   advertiseROSTopics();
+
+  reset_pub_ = nh_.advertise<astra_camera::astra_registration_info>("/astra_registration", 1);
+}
+
+AstraDriver::~AstraDriver()
+{
+  ROS_INFO("AstraDriver::~AstraDriver");
+  if (device_) device_->stopAllStreams();
+  depth_callback_timer_.stop();
+  pub_color_.shutdown();
+  pub_depth_.shutdown();
+  pub_depth_raw_.shutdown();
+  pub_ir_.shutdown();
+  pub_projector_info_.shutdown();
+  usleep(10*1000);
+
+  if (device_) device_ = nullptr; // Release device
 }
 
 bool AstraDriver::EnableStreaming(std_srvs::SetBool::Request &req, std_srvs::SetBool::Response &res)
 {
-  ROS_INFO("%s::AstraDriver::EnableStreaming: START, req.data: %u, enable_streaming_: %u", ns_.c_str(), req.data, enable_streaming_);
+  ROS_INFO("%s::AstraDriver::EnableStreaming: START, req.data: %u, enable_streaming_: %u, rgb_preferred_: %u", ns_.c_str(), req.data, enable_streaming_, rgb_preferred_);
   if (!req.data && enable_streaming_) // Disable streaming
   {
     enable_streaming_ = false;
@@ -186,11 +204,6 @@ bool AstraDriver::EnableStreaming(std_srvs::SetBool::Request &req, std_srvs::Set
 
   if (req.data && !enable_streaming_) // Enable streaming
   {
-    if (device_ && !device_->isDepthStreamStarted())
-    {
-      device_->startDepthStream();
-      depth_callback_timer_.start();
-    }
     if (!rgb_preferred_)
     {
       if (device_ && !device_->isIRStreamStarted()) device_->startIRStream();
@@ -199,6 +212,13 @@ bool AstraDriver::EnableStreaming(std_srvs::SetBool::Request &req, std_srvs::Set
     {
       if (device_ && !device_->isColorStreamStarted()) device_->startColorStream();
     }
+
+    if (device_ && !device_->isDepthStreamStarted())  // Must do depth streaming after color streams, otherwise send_cmd error could be happening when reading depth frames
+    {
+      device_->startDepthStream();
+      depth_callback_timer_.start();
+    }
+
     enable_streaming_ = true;
   }
 
@@ -212,13 +232,11 @@ void AstraDriver::setHealthTimers() {
   auto reset_this = [this](const ros::TimerEvent&) -> void
   {
     ROS_WARN_STREAM("Astra " << ns_ << " driver timeout! Resetting");
-    const auto nh = nh_;
-    const auto pnh = pnh_;
-    const auto ns = ns_;
-    const auto serial_no = device_id_;
-    const auto is_advanced = is_advanced_;
-    this->~AstraDriver();
-    new (this) AstraDriver(nh, pnh, ns, serial_no, is_advanced);
+    astra_camera::astra_registration_info msg;
+    msg.ns = ns_;
+    msg.serial_no = "serial_" + device_id_;
+    msg.is_advanced = is_advanced_;
+    reset_pub_.publish(msg);
   };
   depth_callback_timer_ = nh_.createTimer(depth_callback_timeout_, reset_this, false, false);
 }
@@ -532,7 +550,7 @@ void AstraDriver::imageConnectCb()
 
 void AstraDriver::depthConnectCb()
 {
-  ROS_INFO("AstraDriver::depthConnectCbd");
+  ROS_INFO("AstraDriver::depthConnectCb");
   boost::lock_guard<boost::mutex> lock(connect_mutex_);
 
   depth_subscribers_ = pub_depth_.getNumSubscribers() > 0;
@@ -944,18 +962,19 @@ void AstraDriver::initDevice()
     try
     {
       std::string device_URI = resolveDeviceURI(device_id_);
-      #if 0
+      ROS_INFO("AstraDriver::initDevice, device_id_: %s, device_URI: %s", device_id_.c_str(), device_URI.c_str());
+      //#if 0
       if( device_URI == "" ) 
       {
       	boost::this_thread::sleep(boost::posix_time::milliseconds(500));
       	continue;
       }
-      #endif
+      //#endif
       namespace bi = boost::interprocess;
       bi::named_mutex usb_mutex{bi::open_or_create, "usb_mutex"};
       bi::scoped_lock<bi::named_mutex> lock(usb_mutex);
 
-      device_ = device_manager_->getDevice(device_URI, is_advanced_);
+      device_ = device_manager_->getDevice(device_URI, is_advanced_, ns_, device_id_);
     }
     catch (const AstraException& exception)
     {

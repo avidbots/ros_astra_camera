@@ -250,9 +250,9 @@ boost::shared_ptr<AstraDevice> AstraDeviceManager::getAnyDevice()
   return boost::make_shared<AstraDevice>("");
 }
 
-boost::shared_ptr<AstraDevice> AstraDeviceManager::getDevice(const std::string& device_URI, const bool is_advanced)
+boost::shared_ptr<AstraDevice> AstraDeviceManager::getDevice(const std::string& device_URI, const bool is_advanced, const std::string& ns, const std::string& serial_no)
 {
-  return is_advanced ? boost::make_shared<AstraAdvancedDevice>(device_URI) : boost::make_shared<AstraDevice>(device_URI);
+  return is_advanced ? boost::make_shared<AstraAdvancedDevice>(device_URI, ns, serial_no) : boost::make_shared<AstraDevice>(device_URI);
 }
 
 std::ostream& operator << (std::ostream& stream, const AstraDeviceManager& device_manager) {

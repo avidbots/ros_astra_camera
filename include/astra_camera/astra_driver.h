@@ -65,6 +65,7 @@ class AstraDriver
 {
 public:
   AstraDriver(const ros::NodeHandle& n, const ros::NodeHandle& pnh, const std::string& ns, const std::string& serial_no, const bool is_advanced) ;
+  ~AstraDriver();
 
 private:
   typedef astra_camera::AstraConfig Config;
@@ -191,6 +192,7 @@ private:
   bool enable_streaming_;
 
   bool is_advanced_;
+  ros::Publisher reset_pub_;
 };
 
 }

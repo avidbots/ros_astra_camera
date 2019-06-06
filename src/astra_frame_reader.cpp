@@ -4,6 +4,7 @@
 
 #include "astra_camera/astra_frame_reader.h"
 #include "astra_camera/astra_timer_filter.h"
+#include "astra_camera/astra_registration_info.h"
 
 #include <sensor_msgs/image_encodings.h>
 
@@ -20,12 +21,21 @@ AstraFrameReader::AstraFrameReader() :
     user_device_timer_(false),
     timer_filter_(new AstraTimerFilter(TIME_FILTER_LENGTH)),
     prev_time_stamp_(0.0),
-    reading_(false)
+    reading_(true),
+    pause_(false),
+    paused_(false)
 {
   ros::Time::init();
   ros::NodeHandle nh;
 
+  reset_pub_ = nh.advertise<astra_camera::astra_registration_info>("/astra_registration", 1);
+
   Start();
+}
+
+AstraFrameReader::~AstraFrameReader()
+{
+  Stop();
 }
 
 boost::shared_ptr<AstraFrameReader> AstraFrameReader::getSingleton()
@@ -46,23 +56,36 @@ void AstraFrameReader::setUseDeviceTimer(bool enable)
 
 void AstraFrameReader::ReadFrames()
 {
-  usleep(1*1000);
-  mutex_.lock();
+  if (pause_)
+  {
+    usleep(100 * 1000);
+    paused_ = true;
+    return;
+  }
+  else paused_ = false;
+
+  if (frame_contexts_.empty())
+  {
+    usleep(100 * 1000);
+  }
+
   for (auto& context : frame_contexts_)
   {
     ReadOneFrame(context.first, *(context.second));
   }
-
-  if (frame_contexts_.empty())
-  {
-    usleep(1000 * 1000);
-  }
-
-  mutex_.unlock();
 }
 
 void AstraFrameReader::ReadOneFrame(const std::string& uri, FrameContext& context)
 {
+  int pStreamIndex(0);
+  auto p = context.video_stream.get();
+  auto ret = openni::OpenNI::waitForAnyStream(&p, 1, &pStreamIndex, 165); // Must add this, since readFrame is a blocking method
+  if (ret != openni::STATUS_OK)
+  {
+    ROS_ERROR_STREAM_THROTTLE(5, GetLogPrefix("AstraFrameReader", context.ns) << "reading frame timeout!");
+    return;
+  }
+
   if (frame_contexts_.size() == 2) // Only support 2 advanced cameras running at the same time
   {
     context.TurnOnProjector(false);
@@ -81,7 +104,7 @@ void AstraFrameReader::ReadOneFrame(const std::string& uri, FrameContext& contex
     {
       image->header.stamp = ros_now;
 
-      ROS_DEBUG("Time interval between frames: %.4f ms", (float)((ros_now.toSec()-prev_time_stamp_)*1000.0));
+      ROS_DEBUG_STREAM(GetLogPrefix("AstraFrameReader", context.ns) << "Time interval between frames: " << (float)((ros_now.toSec()-prev_time_stamp_)*1000.0) << " ms");
 
       prev_time_stamp_ = ros_now.toSec();
     }
@@ -103,6 +126,7 @@ void AstraFrameReader::ReadOneFrame(const std::string& uri, FrameContext& contex
       image->header.stamp.fromSec(corrected_timestamp);
 
       ROS_DEBUG("Time interval between frames: %.4f ms", (float)((corrected_timestamp-prev_time_stamp_)*1000.0));
+      ROS_DEBUG_STREAM(GetLogPrefix("AstraFrameReader", context.ns) << "Time interval between frames: " << (float)((corrected_timestamp-prev_time_stamp_)*1000.0) << " ms");
 
       prev_time_stamp_ = corrected_timestamp;
     }
@@ -155,7 +179,7 @@ void AstraFrameReader::ReadOneFrame(const std::string& uri, FrameContext& contex
         break;
       case openni::PIXEL_FORMAT_JPEG:
       default:
-        ROS_ERROR("Invalid image encoding");
+        ROS_ERROR_STREAM(GetLogPrefix("AstraFrameReader", context.ns) << "invalid image encoding!");
         break;
     }
 
@@ -174,13 +198,13 @@ void AstraFrameReader::ReadOneFrame(const std::string& uri, FrameContext& contex
 
 void AstraFrameReader::Start()
 {
-  ROS_INFO("AstraFrameReader::Start");
+  ROS_INFO_STREAM(GetLogPrefix("AstraFrameReader", ""));
   reading_ = true;
   reading_thread_ = std::thread([this]() -> void { while (reading_ && ros::ok()) ReadFrames(); });
 }
 
 void AstraFrameReader::Stop() {
-  ROS_INFO("AstraFrameReader::Stop");
+  ROS_INFO_STREAM(GetLogPrefix("AstraFrameReader", ""));
   reading_ = false;
   reading_thread_.join();
 
@@ -190,38 +214,54 @@ void AstraFrameReader::Stop() {
   }
 }
 
-void AstraFrameReader::Register(const std::string& uri, const boost::shared_ptr<openni::VideoStream>& video_stream)
+void AstraFrameReader::Register(const std::string& uri, const std::string& ns, const std::string& serial_no, const boost::shared_ptr<openni::VideoStream>& video_stream)
 {
-  ROS_INFO("AstraFrameReader::Register, STARTED, uri: %s!", uri.c_str());
+  ROS_INFO_STREAM(GetLogPrefix("AstraFrameReader", ns));
   mutex_.lock();
+  pause_ = true;
+  while (!paused_ && ros::ok()) usleep(20);
+
   if (frame_contexts_.find(uri) != frame_contexts_.end())
   {
-    ROS_INFO("AstraFrameReader::Register, %s has been registered!", uri.c_str());
+    ROS_INFO_STREAM(GetLogPrefix("AstraFrameReader", ns) << "has been registered!");
   }
   else
   {
     boost::shared_ptr<FrameContext> context = boost::make_shared<FrameContext>();
+    context->ns = ns;
+    context->serial_no = serial_no;
     context->video_stream = video_stream;
     context->cob_device.InitDevice();                                                                                                                                                 
     context->cob_device.OpenDevice(uri.c_str());
     frame_contexts_[uri] = context;
-    ROS_INFO("AstraFrameReader::Register, FINISHED, %s", uri.c_str());
+    ROS_INFO_STREAM(GetLogPrefix("AstraFrameReader", ns) << "FINISHED, registered!");
   }
+  pause_ = false;
   mutex_.unlock();
 }
 
 void AstraFrameReader::Unregister(const std::string& uri)
 {
+  ROS_INFO_STREAM(GetLogPrefix("AstraFrameReader", uri) << "STARTED");
   mutex_.lock();
+
+  pause_ = true;
+  while (!paused_ && ros::ok())
+  {
+    usleep(20);
+  }
+
   if (frame_contexts_.find(uri) != frame_contexts_.end())
   {
+    frame_contexts_[uri]->TurnOnProjector(false);
+    frame_contexts_[uri] = nullptr; // release the source first
     frame_contexts_.erase(uri);
-    ROS_INFO("AstraFrameReader::Unregister, %s", uri.c_str());
   }
-  else
-  {
-    ROS_INFO("AstraFrameReader::Unregister, %s isn't existed!", uri.c_str());
-  }
+    
+  ROS_INFO_STREAM(GetLogPrefix("AstraFrameReader", uri) << "FINISHED, unregistered");
+
+  pause_ = false;
   mutex_.unlock();
 }
+
 }
