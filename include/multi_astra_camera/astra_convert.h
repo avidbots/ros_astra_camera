@@ -30,20 +30,26 @@
  *      Author: Tim Liu (liuhua@orbbec.com)
  */
 
-//#include "astra_camera/astra_driver.h"
-#include "astra_camera/astra_multi_driver.h"
 
-int main(int argc, char **argv){
+#ifndef ASTRA_CONVERT_H_
+#define ASTRA_CONVERT_H_
 
-  ROS_INFO("astra_camera_node init");
-  ros::init(argc, argv, "astra_camera");
-  ros::NodeHandle n;
-  ros::NodeHandle pnh("~");
+#include "multi_astra_camera/astra_device_info.h"
+#include "multi_astra_camera/astra_video_mode.h"
 
-  //astra_wrapper::AstraDriver drv(n, pnh, false);
-  astra_wrapper::AstraMultiDriver drv(n, pnh);
+#include "openni2/OpenNI.h"
 
-  ros::spin();
+#include <vector>
 
-  return 0;
+namespace astra_wrapper
+{
+
+const AstraDeviceInfo astra_convert(const openni::DeviceInfo* pInfo);
+
+const AstraVideoMode astra_convert(const openni::VideoMode& input);
+const openni::VideoMode astra_convert(const AstraVideoMode& input);
+
+const std::vector<AstraVideoMode> astra_convert(const openni::Array<openni::VideoMode>& input);
 }
+
+#endif

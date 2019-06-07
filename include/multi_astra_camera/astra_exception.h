@@ -87,5 +87,5 @@ inline void throwOpenNIException(const char* function, const char* file, unsigne
   vsprintf(msg, format, args);
   throw AstraException(function, file, line, msg);
 }
-} // namespace astra_camera
+} // namespace multi_astra_camera
 #endif

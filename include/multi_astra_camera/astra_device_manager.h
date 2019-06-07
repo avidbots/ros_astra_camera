@@ -33,7 +33,7 @@
 #ifndef ASTRA_DEVICE_MANAGER_H_
 #define ASTRA_DEVICE_MANAGER_H_
 
-#include "astra_camera/astra_device_info.h"
+#include "multi_astra_camera/astra_device_info.h"
 
 #include <boost/thread/mutex.hpp>
 

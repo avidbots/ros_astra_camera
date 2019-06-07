@@ -30,33 +30,55 @@
  *      Author: Tim Liu (liuhua@orbbec.com)
  */
 
-//#include "astra_camera/astra_driver.h"
-#include "astra_camera/astra_multi_driver.h"
-#include <nodelet/nodelet.h>
+#ifndef ASTRA_FRAME_LISTENER_H_
+#define ASTRA_FRAME_LISTENER_H_
 
-namespace astra_camera
+#include "multi_astra_camera/astra_device.h"
+
+#include <sensor_msgs/Image.h>
+
+#include <vector>
+
+#include "openni2/OpenNI.h"
+
+namespace astra_wrapper
 {
 
-class AstraDriverNodelet : public nodelet::Nodelet
+class AstraTimerFilter;
+
+class AstraFrameListener : public openni::VideoStream::NewFrameListener
 {
 public:
-  AstraDriverNodelet()  {};
+  AstraFrameListener();
 
-  ~AstraDriverNodelet() {}
+  virtual ~AstraFrameListener()
+  { };
+
+  void onNewFrame(openni::VideoStream& stream);
+
+  void setCallback(FrameCallbackFunction& callback)
+  {
+    callback_ = callback;
+  }
+
+  void setUseDeviceTimer(bool enable);
+
+  void setDataSkip(const int data_skip) { data_skip_counter_ = 0; data_skip_ = data_skip; }
 
 private:
-  virtual void onInit()
-  {
-    ROS_INFO("AstraDriverNodelet::onInit");
-    lp.reset(new astra_wrapper::AstraMultiDriver(getNodeHandle(), getPrivateNodeHandle()));
-    //lp.reset(new astra_wrapper::AstraDriver(getNodeHandle(), getPrivateNodeHandle(), true));
-  };
+  openni::VideoFrameRef m_frame;
 
-  //boost::shared_ptr<astra_wrapper::AstraDriver> lp;
-  boost::shared_ptr<astra_wrapper::AstraMultiDriver> lp;
+  FrameCallbackFunction callback_;
+
+  bool user_device_timer_;
+  boost::shared_ptr<AstraTimerFilter> timer_filter_;
+
+  double prev_time_stamp_;
+
+  int data_skip_counter_;
+  int data_skip_;
 };
 
 }
 
-#include <pluginlib/class_list_macros.h>
-PLUGINLIB_EXPORT_CLASS(astra_camera::AstraDriverNodelet, nodelet::Nodelet)
+#endif

@@ -30,55 +30,19 @@
  *      Author: Tim Liu (liuhua@orbbec.com)
  */
 
-#ifndef ASTRA_FRAME_LISTENER_H_
-#define ASTRA_FRAME_LISTENER_H_
+#include "multi_astra_camera/astra_multi_driver.h"
 
-#include "astra_camera/astra_device.h"
+int main(int argc, char **argv){
 
-#include <sensor_msgs/Image.h>
+  ROS_INFO("multi_astra_camera_node init");
+  ros::init(argc, argv, "multi_astra_camera");
+  ros::NodeHandle n;
+  ros::NodeHandle pnh("~");
 
-#include <vector>
+  //astra_wrapper::AstraDriver drv(n, pnh, false);
+  astra_wrapper::AstraMultiDriver drv(n, pnh);
 
-#include "openni2/OpenNI.h"
+  ros::spin();
 
-namespace astra_wrapper
-{
-
-class AstraTimerFilter;
-
-class AstraFrameListener : public openni::VideoStream::NewFrameListener
-{
-public:
-  AstraFrameListener();
-
-  virtual ~AstraFrameListener()
-  { };
-
-  void onNewFrame(openni::VideoStream& stream);
-
-  void setCallback(FrameCallbackFunction& callback)
-  {
-    callback_ = callback;
-  }
-
-  void setUseDeviceTimer(bool enable);
-
-  void setDataSkip(const int data_skip) { data_skip_counter_ = 0; data_skip_ = data_skip; }
-
-private:
-  openni::VideoFrameRef m_frame;
-
-  FrameCallbackFunction callback_;
-
-  bool user_device_timer_;
-  boost::shared_ptr<AstraTimerFilter> timer_filter_;
-
-  double prev_time_stamp_;
-
-  int data_skip_counter_;
-  int data_skip_;
-};
-
+  return 0;
 }
-
-#endif

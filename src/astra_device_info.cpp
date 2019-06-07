@@ -30,7 +30,7 @@
  *      Author: Tim Liu (liuhua@orbbec.com)
  */
 
-#include "astra_camera/astra_device_info.h"
+#include "multi_astra_camera/astra_device_info.h"
 
 namespace astra_wrapper
 {

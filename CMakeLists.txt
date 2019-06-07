@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 2.8.3)
-project(astra_camera)
+project(multi_astra_camera)
 
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
 
@@ -87,17 +87,17 @@ add_library(astra_driver_lib
 target_link_libraries(astra_driver_lib astra_wrapper ${catkin_LIBRARIES} ${Boost_LIBRARIES} -lOpenNI2 )
 add_dependencies(astra_driver_lib ${PROJECT_NAME}_gencfg ${PROJECT_NAME}_generate_messages_cpp)
 
-add_library(astra_camera_nodelet
-   ros/astra_camera_nodelet.cpp
+add_library(multi_astra_camera_nodelet
+  ros/multi_astra_camera_nodelet.cpp
 )
-target_link_libraries(astra_camera_nodelet astra_driver_lib ${catkin_LIBRARIES} ${Boost_LIBRARIES} -lOpenNI2 )
-add_dependencies(astra_camera_nodelet ${PROJECT_NAME}_gencfg)
+target_link_libraries(multi_astra_camera_nodelet astra_driver_lib ${catkin_LIBRARIES} ${Boost_LIBRARIES} -lOpenNI2 )
+add_dependencies(multi_astra_camera_nodelet ${PROJECT_NAME}_gencfg)
 
-add_executable(astra_camera_node
-   ros/astra_camera_node.cpp
+add_executable(multi_astra_camera_node
+   ros/multi_astra_camera_node.cpp
 )
-target_link_libraries(astra_camera_node astra_driver_lib ${catkin_LIBRARIES} ${Boost_LIBRARIES} -lOpenNI2 )
-add_dependencies(astra_camera_node ${PROJECT_NAME}_gencfg ${PROJECT_NAME}_generate_messages_cpp)
+target_link_libraries(multi_astra_camera_node astra_driver_lib ${catkin_LIBRARIES} ${Boost_LIBRARIES} -lOpenNI2 )
+add_dependencies(multi_astra_camera_node ${PROJECT_NAME}_gencfg ${PROJECT_NAME}_generate_messages_cpp)
 
 add_executable(astra_list_devices
    src/list_devices.cpp
@@ -111,7 +111,7 @@ if (UNIX AND NOT APPLE)
   set(ADDITIONAL_EXECUTABLES "astra_usb_reset")
 endif()
 
-install(TARGETS astra_wrapper astra_camera_nodelet astra_camera_node astra_list_devices astra_driver_lib ${ADDITIONAL_EXECUTABLES}
+install(TARGETS astra_wrapper multi_astra_camera_nodelet multi_astra_camera_node astra_list_devices astra_driver_lib ${ADDITIONAL_EXECUTABLES}
   ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
   LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
   RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}

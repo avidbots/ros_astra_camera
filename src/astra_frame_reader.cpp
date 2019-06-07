@@ -2,9 +2,9 @@
 #include <sys/ipc.h>
 #include <sys/shm.h>
 
-#include "astra_camera/astra_frame_reader.h"
-#include "astra_camera/astra_timer_filter.h"
-#include "astra_camera/astra_registration_info.h"
+#include "multi_astra_camera/astra_frame_reader.h"
+#include "multi_astra_camera/astra_timer_filter.h"
+#include "multi_astra_camera/astra_registration_info.h"
 
 #include <sensor_msgs/image_encodings.h>
 
@@ -28,7 +28,7 @@ AstraFrameReader::AstraFrameReader() :
   ros::Time::init();
   ros::NodeHandle nh;
 
-  reset_pub_ = nh.advertise<astra_camera::astra_registration_info>("/astra_registration", 1);
+  reset_pub_ = nh.advertise<multi_astra_camera::astra_registration_info>("/astra_registration", 1);
 
   Start();
 }

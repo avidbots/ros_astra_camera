@@ -30,26 +30,32 @@
  *      Author: Tim Liu (liuhua@orbbec.com)
  */
 
+#include "multi_astra_camera/astra_multi_driver.h"
+#include <nodelet/nodelet.h>
 
-#ifndef ASTRA_CONVERT_H_
-#define ASTRA_CONVERT_H_
-
-#include "astra_camera/astra_device_info.h"
-#include "astra_camera/astra_video_mode.h"
-
-#include "openni2/OpenNI.h"
-
-#include <vector>
-
-namespace astra_wrapper
+namespace multi_astra_camera
 {
 
-const AstraDeviceInfo astra_convert(const openni::DeviceInfo* pInfo);
+class AstraDriverNodelet : public nodelet::Nodelet
+{
+public:
+  AstraDriverNodelet()  {};
 
-const AstraVideoMode astra_convert(const openni::VideoMode& input);
-const openni::VideoMode astra_convert(const AstraVideoMode& input);
+  ~AstraDriverNodelet() {}
 
-const std::vector<AstraVideoMode> astra_convert(const openni::Array<openni::VideoMode>& input);
+private:
+  virtual void onInit()
+  {
+    ROS_INFO("AstraDriverNodelet::onInit");
+    lp.reset(new astra_wrapper::AstraMultiDriver(getNodeHandle(), getPrivateNodeHandle()));
+    //lp.reset(new astra_wrapper::AstraDriver(getNodeHandle(), getPrivateNodeHandle(), true));
+  };
+
+  //boost::shared_ptr<astra_wrapper::AstraDriver> lp;
+  boost::shared_ptr<astra_wrapper::AstraMultiDriver> lp;
+};
+
 }
 
-#endif
+#include <pluginlib/class_list_macros.h>
+PLUGINLIB_EXPORT_CLASS(multi_astra_camera::AstraDriverNodelet, nodelet::Nodelet)

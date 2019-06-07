@@ -36,8 +36,8 @@
  */
 
 #include <iostream>
-#include "astra_camera/astra_device_manager.h"
-#include "astra_camera/astra_exception.h"
+#include "multi_astra_camera/astra_device_manager.h"
+#include "multi_astra_camera/astra_exception.h"
 
 using astra_wrapper::AstraDeviceManager;
 using astra_wrapper::AstraDeviceInfo;

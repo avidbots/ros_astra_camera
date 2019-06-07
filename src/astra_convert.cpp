@@ -30,8 +30,8 @@
  *      Author: Tim Liu (liuhua@orbbec.com)
  */
 
-#include "astra_camera/astra_convert.h"
-#include "astra_camera/astra_exception.h"
+#include "multi_astra_camera/astra_convert.h"
+#include "multi_astra_camera/astra_exception.h"
 
 #include <boost/make_shared.hpp>
 

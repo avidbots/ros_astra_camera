@@ -30,9 +30,9 @@
  *      Author: Tim Liu (liuhua@orbbec.com)
  */
 
-#include "astra_camera/astra_driver.h"
-#include "astra_camera/astra_exception.h"
-#include "astra_camera/astra_registration_info.h"
+#include "multi_astra_camera/astra_driver.h"
+#include "multi_astra_camera/astra_exception.h"
+#include "multi_astra_camera/astra_registration_info.h"
 
 #include <openni2/OpenNI.h>
 
@@ -169,7 +169,7 @@ AstraDriver::AstraDriver(const ros::NodeHandle& n, const ros::NodeHandle& pnh, c
   setHealthTimers();
   advertiseROSTopics();
 
-  reset_pub_ = nh_.advertise<astra_camera::astra_registration_info>("/astra_registration", 1);
+  reset_pub_ = nh_.advertise<multi_astra_camera::astra_registration_info>("/astra_registration", 1);
 }
 
 AstraDriver::~AstraDriver()
@@ -189,7 +189,7 @@ AstraDriver::~AstraDriver()
 
 bool AstraDriver::EnableStreaming(std_srvs::SetBool::Request &req, std_srvs::SetBool::Response &res)
 {
-  ROS_INFO_STREAM(GetLogPrefix("AstraDriver", ns_) << "START, req.data: "<< req.data << ", enable_streaming_: " << enable_streaming_ <<  ", rgb_preferred_: " << rgb_preferred_);
+  ROS_INFO_STREAM(GetLogPrefix("AstraDriver", ns_) << "START, req.data: "<< (int)req.data << ", enable_streaming_: " << enable_streaming_ <<  ", rgb_preferred_: " << rgb_preferred_);
   if (!req.data && enable_streaming_) // Disable streaming
   {
     enable_streaming_ = false;
@@ -222,7 +222,7 @@ bool AstraDriver::EnableStreaming(std_srvs::SetBool::Request &req, std_srvs::Set
     enable_streaming_ = true;
   }
 
-  ROS_INFO_STREAM(GetLogPrefix("AstraDriver", ns_) << "FINISHED, req.data: " << req.data << ", enable_streaming_: " << enable_streaming_);
+  ROS_INFO_STREAM(GetLogPrefix("AstraDriver", ns_) << "FINISHED, req.data: " << (int)req.data << ", enable_streaming_: " << enable_streaming_);
   res.success = true;
   res.message = enable_streaming_ ? "Enabled streaming" : "Disabled streaming";
   return true;
@@ -232,7 +232,7 @@ void AstraDriver::setHealthTimers() {
   auto reset_this = [this](const ros::TimerEvent&) -> void
   {
     ROS_WARN_STREAM("Astra " << ns_ << " driver timeout! Resetting");
-    astra_camera::astra_registration_info msg;
+    multi_astra_camera::astra_registration_info msg;
     msg.ns = ns_;
     msg.serial_no = "serial_" + device_id_;
     msg.is_advanced = is_advanced_;
@@ -311,7 +311,7 @@ void AstraDriver::advertiseROSTopics()
 
 }
 
-bool AstraDriver::getSerialCb(astra_camera::GetSerialRequest& req, astra_camera::GetSerialResponse& res) {
+bool AstraDriver::getSerialCb(multi_astra_camera::GetSerialRequest& req, multi_astra_camera::GetSerialResponse& res) {
   res.serial = device_manager_->getSerial(device_->getUri());
   return true;
 }
@@ -852,7 +852,7 @@ std::string AstraDriver::resolveDeviceURI(const std::string& device_id) throw(As
   }
   // look for '<bus>@<number>' format
   //   <bus>    is usb bus id, typically start at 1
-  //   <number> is the device number, for consistency with astra_camera, these start at 1
+  //   <number> is the device number, for consistency with multi_astra_camera, these start at 1
   //               although 0 specifies "any device on this bus"
   else if (device_id.size() > 1 && device_id.find('@') != std::string::npos && device_id.find('/') == std::string::npos)
   {

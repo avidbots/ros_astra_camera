@@ -30,7 +30,7 @@
  *      Author: Tim Liu (liuhua@orbbec.com)
  */
 
-#include "astra_camera/astra_timer_filter.h"
+#include "multi_astra_camera/astra_timer_filter.h"
 #include <algorithm>
 
 

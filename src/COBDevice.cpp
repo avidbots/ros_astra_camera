@@ -1,4 +1,4 @@
-#include "astra_camera/COBDevice.h"
+#include "multi_astra_camera/COBDevice.h"
 #include <iostream>
 
 #define LINUX
