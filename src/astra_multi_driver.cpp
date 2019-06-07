@@ -11,7 +11,7 @@ AstraMultiDriver::AstraMultiDriver(ros::NodeHandle& n, ros::NodeHandle& pnh) :
 {
   ROS_INFO_STREAM(GetLogPrefix("AstraMultiDriver", ""));
 
-  astra_register_sub_ = nh_.subscribe("/astra_registration", 1, &AstraMultiDriver::RegistrationCallback, this);
+  astra_register_sub_ = nh_.subscribe("/astra_registration", 10, &AstraMultiDriver::RegistrationCallback, this);
 }
 
 void AstraMultiDriver::RegistrationCallback(const multi_astra_camera::astra_registration_info::ConstPtr& msg)
