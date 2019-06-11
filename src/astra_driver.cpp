@@ -59,6 +59,7 @@ AstraDriver::AstraDriver(const ros::NodeHandle& n, const ros::NodeHandle& pnh, c
     nh_(n),
     pnh_(pnh),
     device_manager_(AstraDeviceManager::getSingelton()),
+    device_(nullptr),
     device_id_(serial_no),
     ns_(ns),
     config_init_(false),
@@ -75,6 +76,8 @@ AstraDriver::AstraDriver(const ros::NodeHandle& n, const ros::NodeHandle& pnh, c
   // Create service for enable/disable streaming
   enable_streaming_srv_ = nh_.advertiseService("/" + ns_ + pnh_.getNamespace() + "/enable_streams", &AstraDriver::EnableStreaming, this);
   enable_streaming_ = true;
+
+  reset_pub_ = nh_.advertise<multi_astra_camera::astra_registration_info>("/astra_registration", 1); // Must be initialized before initDevice, since initDevice might use this publisher
 
 #if MULTI_ASTRA
 	int bootOrder, devnums;
@@ -149,6 +152,12 @@ AstraDriver::AstraDriver(const ros::NodeHandle& n, const ros::NodeHandle& pnh, c
 #else
 
   initDevice();
+  if (!device_)
+  {
+    usleep(1000*1000); // 1s
+    ResetThis();
+    return;
+  }
 
 #endif
   device_->setDepthFrameCallback(boost::bind(&AstraDriver::newDepthFrameCallback, this, _1));
@@ -168,8 +177,6 @@ AstraDriver::AstraDriver(const ros::NodeHandle& n, const ros::NodeHandle& pnh, c
 
   setHealthTimers();
   advertiseROSTopics();
-
-  reset_pub_ = nh_.advertise<multi_astra_camera::astra_registration_info>("/astra_registration", 1);
 }
 
 AstraDriver::~AstraDriver()
@@ -228,15 +235,21 @@ bool AstraDriver::EnableStreaming(std_srvs::SetBool::Request &req, std_srvs::Set
   return true;
 }
 
+void AstraDriver::ResetThis()
+{
+  ROS_WARN_STREAM(GetLogPrefix("ResetThis", ns_));
+  multi_astra_camera::astra_registration_info msg;
+  msg.ns = ns_;
+  msg.serial_no = "serial_" + device_id_;
+  msg.is_advanced = is_advanced_;
+  reset_pub_.publish(msg);
+}
+
 void AstraDriver::setHealthTimers() {
   auto reset_this = [this](const ros::TimerEvent&) -> void
   {
     ROS_WARN_STREAM("Astra " << ns_ << " driver timeout! Resetting");
-    multi_astra_camera::astra_registration_info msg;
-    msg.ns = ns_;
-    msg.serial_no = "serial_" + device_id_;
-    msg.is_advanced = is_advanced_;
-    reset_pub_.publish(msg);
+    ResetThis();
   };
   depth_callback_timer_ = nh_.createTimer(depth_callback_timeout_, reset_this, false, false);
 }
@@ -347,11 +360,15 @@ void AstraDriver::configCb(Config &config, uint32_t level)
     exit(-1);
   }
 
+  ROS_INFO_STREAM(GetLogPrefix("configCb", ns_) << "depth_mode: " << config.depth_mode);
   if (lookupVideoModeFromDynConfig(config.depth_mode, depth_video_mode_)<0)
   {
     ROS_ERROR("Undefined depth video mode received from dynamic reconfigure");
     exit(-1);
   }
+  ROS_INFO_STREAM(GetLogPrefix("configCb", ns_) << "depth_video_mode_.frame_rate_: " << depth_video_mode_.frame_rate_ << ", depth_video_mode_.pixel_format_: "
+      << (int)depth_video_mode_.pixel_format_ << ", depth_video_mode_.x_resolution_: " << depth_video_mode_.x_resolution_ << ", depth_video_mode_.y_resolution_: "
+      << depth_video_mode_.y_resolution_);
 
   // assign pixel format
 
@@ -550,7 +567,6 @@ void AstraDriver::imageConnectCb()
 
 void AstraDriver::depthConnectCb()
 {
-  ROS_INFO("AstraDriver::depthConnectCb");
   boost::lock_guard<boost::mutex> lock(connect_mutex_);
 
   depth_subscribers_ = pub_depth_.getNumSubscribers() > 0;
@@ -915,6 +931,7 @@ std::string AstraDriver::resolveDeviceURI(const std::string& device_id) throw(As
         	{
               		// ROS_WARN("------------seraial num it is  %s, device_id is %s -----------", (*it).c_str(), device_id_.c_str());
         		std::string serial = device_manager_->getSerial(*it);
+            ROS_INFO_STREAM(GetLogPrefix("AstraDriver", "") << "serial: " << serial << ", uri: " << it->c_str());
         	 	if (serial.size() > 0 && device_id == serial)
         		{
           			alreadyOpen.insert(*it);
@@ -925,7 +942,8 @@ std::string AstraDriver::resolveDeviceURI(const std::string& device_id) throw(As
 	#endif
       	catch (const AstraException& exception)
       	{
-        	ROS_WARN("Could not query serial number of device \"%s\":", exception.what());
+        	//ROS_WARN("Could not query serial number of device \"%s\":", exception.what());
+        	ROS_ERROR("Could not query serial number of device \"%s\":", exception.what());
       	}
     }
 
@@ -957,47 +975,35 @@ std::string AstraDriver::resolveDeviceURI(const std::string& device_id) throw(As
 
 void AstraDriver::initDevice()
 {
-  while (ros::ok() && !device_)
+  ROS_INFO_STREAM(GetLogPrefix("initDevice", ns_) << "STARTED, device_id_: " << device_id_);
+  try
   {
-    try
-    {
-      std::string device_URI = resolveDeviceURI(device_id_);
-      ROS_INFO("AstraDriver::initDevice, device_id_: %s, device_URI: %s", device_id_.c_str(), device_URI.c_str());
-      //#if 0
-      if( device_URI == "" ) 
-      {
-      	boost::this_thread::sleep(boost::posix_time::milliseconds(500));
-      	continue;
-      }
-      //#endif
-      namespace bi = boost::interprocess;
-      bi::named_mutex usb_mutex{bi::open_or_create, "usb_mutex"};
-      bi::scoped_lock<bi::named_mutex> lock(usb_mutex);
-
+    std::string device_URI = resolveDeviceURI(device_id_);
+    ROS_INFO_STREAM(GetLogPrefix("initDevice", ns_) << "device_id_: " << device_id_ << ", resolved uri: " << device_URI);
+    if (device_URI.length() > 0) 
       device_ = device_manager_->getDevice(device_URI, is_advanced_, ns_, device_id_);
-    }
-    catch (const AstraException& exception)
+    else
     {
-      if (!device_)
-      {
-        ROS_INFO("No matching device found.... waiting for devices. Reason: %s", exception.what());
-        boost::this_thread::sleep(boost::posix_time::seconds(15));
-        continue;
-      }
-      else
-      {
-        ROS_ERROR("Could not retrieve device. Reason: %s", exception.what());
-        exit(-1);
-      }
+      ROS_ERROR_STREAM(GetLogPrefix("initDevice", ns_) << "empty uri");
+      device_ = nullptr;
     }
   }
-
-  while (ros::ok() && !device_->isValid())
+  catch (const AstraException& exception)
   {
-    ROS_DEBUG("Waiting for device initialization..");
-    boost::this_thread::sleep(boost::posix_time::milliseconds(100));
+    ROS_ERROR_STREAM(GetLogPrefix("initDevice", ns_) << "No matching device found.... waiting for devices. Reason: " << exception.what());
   }
 
+  if (!device_)
+  {
+    ROS_ERROR_STREAM(GetLogPrefix("initDevice", ns_) << "No ui of " << device_id_ << " resolved, try to reset");
+  }
+  else if (!device_->isValid())
+  {
+    device_ = nullptr;
+    ROS_ERROR_STREAM(GetLogPrefix("initDevice", ns_) << "Could not retrieve device, try to reset");
+  }
+  else
+    ROS_INFO_STREAM(GetLogPrefix("initDevice", ns_) << "FINISHED");
 }
 
 void AstraDriver::genVideoModeTableMap()

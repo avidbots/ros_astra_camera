@@ -69,7 +69,7 @@ class AstraFrameListener;
 class AstraDevice
 {
 public:
-  AstraDevice(const std::string& device_URI) throw (AstraException);
+  AstraDevice(const std::string& device_URI, const std::string& ns = "camera") throw (AstraException);
   virtual ~AstraDevice();
 
   const std::string getUri() const;
@@ -174,6 +174,7 @@ protected:
   bool image_registration_activated_;
 
   bool use_device_time_;
+  std::string ns_;
 };
 
 std::ostream& operator << (std::ostream& stream, const AstraDevice& device);

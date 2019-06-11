@@ -110,13 +110,13 @@ private:
   void setDepthVideoMode(const AstraVideoMode& depth_video_mode);
 
   bool EnableStreaming(std_srvs::SetBool::Request &req, std_srvs::SetBool::Response &res);
+  void ResetThis();
 
   ros::NodeHandle nh_;
   ros::NodeHandle pnh_;
 
   boost::shared_ptr<AstraDeviceManager> device_manager_;
   boost::shared_ptr<AstraDevice> device_;
-  boost::shared_ptr<AstraAdvancedDevice> advanced_device_;
 
   std::string device_id_;
   std::string ns_;

@@ -240,7 +240,7 @@ std::string AstraDeviceManager::getSerial(const std::string& Uri) const
   }
   else
   {
-    //THROW_OPENNI_EXCEPTION("Device open failed: %s", openni::OpenNI::getExtendedError());
+    THROW_OPENNI_EXCEPTION("Device open failed: %s", openni::OpenNI::getExtendedError());
   }
   return ret;
 }
@@ -252,7 +252,8 @@ boost::shared_ptr<AstraDevice> AstraDeviceManager::getAnyDevice()
 
 boost::shared_ptr<AstraDevice> AstraDeviceManager::getDevice(const std::string& device_URI, const bool is_advanced, const std::string& ns, const std::string& serial_no)
 {
-  return is_advanced ? boost::make_shared<AstraAdvancedDevice>(device_URI, ns, serial_no) : boost::make_shared<AstraDevice>(device_URI);
+  // try catch will be done in AstraDriver::initDevice
+  return is_advanced ? boost::make_shared<AstraAdvancedDevice>(device_URI, ns, serial_no) : boost::make_shared<AstraDevice>(device_URI, ns);
 }
 
 std::ostream& operator << (std::ostream& stream, const AstraDeviceManager& device_manager) {

@@ -18,9 +18,8 @@ namespace astra_wrapper
 {
 
 AstraAdvancedDevice::AstraAdvancedDevice(const std::string& device_URI, const std::string& ns, const std::string& serial_no) throw (AstraException) : 
-  AstraDevice(device_URI),
+  AstraDevice(device_URI, ns),
   uri_(device_URI),
-  ns_(ns),
   serial_no_(serial_no),
   callback_(0)
 {

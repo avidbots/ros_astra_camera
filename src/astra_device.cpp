@@ -49,17 +49,16 @@
 namespace astra_wrapper
 {
 
-AstraDevice::AstraDevice(const std::string& device_URI) throw (AstraException) :
+AstraDevice::AstraDevice(const std::string& device_URI, const std::string& ns) throw (AstraException) :
     openni_device_(),
     ir_video_started_(false),
     color_video_started_(false),
     depth_video_started_(false),
     image_registration_activated_(false),
-    use_device_time_(false)
+    use_device_time_(false),
+    ns_(ns)
 {
-  openni::Status rc = openni::OpenNI::initialize();
-  if (rc != openni::STATUS_OK)
-    THROW_OPENNI_EXCEPTION("Initialize failed\n%s\n", openni::OpenNI::getExtendedError());
+  openni::Status rc;
 
   openni_device_ = boost::make_shared<openni::Device>();
 
@@ -69,7 +68,9 @@ AstraDevice::AstraDevice(const std::string& device_URI) throw (AstraException) :
   }
   else
   {
-    rc = openni_device_->open(openni::ANY_DEVICE);
+    //rc = openni_device_->open(openni::ANY_DEVICE);
+    ROS_ERROR_STREAM(GetLogPrefix("AstraDevice", ns_) << "empty uri, opening failed!");
+    THROW_OPENNI_EXCEPTION("Device open failed\n%s\n", openni::OpenNI::getExtendedError());
   }
 
   if (rc != openni::STATUS_OK)

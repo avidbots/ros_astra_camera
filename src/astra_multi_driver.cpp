@@ -11,6 +11,10 @@ AstraMultiDriver::AstraMultiDriver(ros::NodeHandle& n, ros::NodeHandle& pnh) :
 {
   ROS_INFO_STREAM(GetLogPrefix("AstraMultiDriver", ""));
 
+  openni::Status rc = openni::OpenNI::initialize();
+  if (rc != openni::STATUS_OK)
+    THROW_OPENNI_EXCEPTION("Initialize failed\n%s\n", openni::OpenNI::getExtendedError());
+
   astra_register_sub_ = nh_.subscribe("/astra_registration", 10, &AstraMultiDriver::RegistrationCallback, this);
 }
 
