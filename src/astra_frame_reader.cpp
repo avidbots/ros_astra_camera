@@ -229,6 +229,7 @@ void AstraFrameReader::Register(const std::string& uri, const std::string& ns, c
   {
     boost::shared_ptr<FrameContext> context = boost::make_shared<FrameContext>();
     context->ns = ns;
+    context->uri = uri;
     context->serial_no = serial_no;
     context->video_stream = video_stream;
     context->cob_device.InitDevice();                                                                                                                                                 
@@ -254,6 +255,7 @@ void AstraFrameReader::Unregister(const std::string& uri)
   if (frame_contexts_.find(uri) != frame_contexts_.end())
   {
     frame_contexts_[uri]->TurnOnProjector(false);
+    frame_contexts_[uri]->cob_device.CloseDevice();
     frame_contexts_[uri] = nullptr; // release the source first
     frame_contexts_.erase(uri);
   }

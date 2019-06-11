@@ -24,6 +24,7 @@ public:
   struct FrameContext
   {
     boost::shared_ptr<openni::VideoStream> video_stream;
+    std::string uri;
     std::string ns;
     std::string serial_no;
     openni::VideoFrameRef depth_frame;
@@ -34,7 +35,16 @@ public:
     {
       uint16_t buf1(0), buf2(0);
       buf1 = turn_on ? 1 : 0;
-      cob_device.SendCmd(85, &buf1, 2, &buf2, 2);
+      auto ret = cob_device.SendCmd(85, &buf1, 2, &buf2, 2);
+      if (ret < 0)
+      {
+        ROS_WARN_STREAM(ns << ": TurnOnProjector failed, ret: "<<ret<<", try to reset cob device!");
+        //cob_device.CloseDevice();
+        //auto ret = cob_device.InitDevice();
+        //ROS_ERROR_STREAM(ns<<": InitDevice: ret: " << ret);
+        //ret = cob_device.OpenDevice(uri.c_str());
+        //ROS_ERROR_STREAM(ns<<": OpenDevice: ret: " << ret);
+      }
     }
   };
 

@@ -1,8 +1,6 @@
 #include "multi_astra_camera/COBDevice.h"
 #include <iostream>
 
-#define LINUX
-
 struct _device_vid_pid {
   uint16_t vid;
   uint16_t pid;

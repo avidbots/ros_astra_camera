@@ -7,6 +7,8 @@
 #include <cstdint>
 #include "libusb.h"
 
+#define LINUX
+
 class COBDevice {
  public:
   COBDevice();
