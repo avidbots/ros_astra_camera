@@ -166,6 +166,18 @@ AstraDriver::AstraDriver(const ros::NodeHandle& n, const ros::NodeHandle& pnh) :
 
   setHealthTimers();
   advertiseROSTopics();
+
+  // Start color streaming first to avoid starting depth streaming before starting color streaming
+  if (!rgb_preferred_)
+  {
+    if (device_ && device_->isColorStreamStarted()) device_->stopColorStream();
+    if (device_ && !device_->isIRStreamStarted()) device_->startIRStream();
+  }
+  else
+  {
+    if (device_ && device_->isIRStreamStarted()) device_->stopIRStream();
+    if (device_ && !device_->isColorStreamStarted()) device_->startColorStream();
+  }
 }
 
 bool AstraDriver::EnableStreaming(std_srvs::SetBool::Request &req, std_srvs::SetBool::Response &res)
@@ -185,11 +197,6 @@ bool AstraDriver::EnableStreaming(std_srvs::SetBool::Request &req, std_srvs::Set
 
   if (req.data && !enable_streaming_) // Enable streaming
   {
-    if (device_ && !device_->isDepthStreamStarted())
-    {
-      device_->startDepthStream();
-      depth_callback_timer_.start();
-    }
     if (!rgb_preferred_)
     {
       if (device_ && !device_->isIRStreamStarted()) device_->startIRStream();
@@ -197,6 +204,11 @@ bool AstraDriver::EnableStreaming(std_srvs::SetBool::Request &req, std_srvs::Set
     else
     {
       if (device_ && !device_->isColorStreamStarted()) device_->startColorStream();
+    }
+    if (device_ && !device_->isDepthStreamStarted())
+    {
+      device_->startDepthStream();
+      depth_callback_timer_.start();
     }
     enable_streaming_ = true;
   }
@@ -460,6 +472,7 @@ void AstraDriver::applyConfigToOpenNIDevice()
 
 }
 
+// imageConnectCb won't be able to start/stop color stream because of usb communication issue
 void AstraDriver::imageConnectCb()
 {
   boost::lock_guard<boost::mutex> lock(connect_mutex_);
@@ -484,8 +497,8 @@ void AstraDriver::imageConnectCb()
     if (!color_started)
     {
       if (enable_streaming_) {
-        ROS_INFO("Starting color stream.");
-        device_->startColorStream();
+        ROS_INFO("Starting color stream. Fake start!");
+        //device_->startColorStream();
       }
     }
   }
@@ -497,8 +510,8 @@ void AstraDriver::imageConnectCb()
 
     if (color_started)
     {
-      ROS_INFO("Stopping color stream.");
-      device_->stopColorStream();
+      ROS_INFO("Stopping color stream. Fake Stop!");
+      //device_->stopColorStream();
     }
 
     if (!ir_started)
@@ -513,8 +526,8 @@ void AstraDriver::imageConnectCb()
   {
     if (color_started)
     {
-      ROS_INFO("Stopping color stream.");
-      device_->stopColorStream();
+      ROS_INFO("Stopping color stream. Fake stop");
+      //device_->stopColorStream();
     }
     if (ir_started)
     {
