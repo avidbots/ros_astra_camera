@@ -79,7 +79,7 @@ int COBDevice::OpenDeviceByPath(const char *astrDevicePaths) {
     sprintf(uri, "%04x/%04x@%d/%d", vid, pid, bus, addr);
     // printf("%04x/%04x@%d/%d)\n", vid, pid, bus, addr);
 
-    if (0 == strncmp(uri, astrDevicePaths, 14)) {
+    if (0 == strncmp(uri, astrDevicePaths, 15)) {
       found = 1;
       break;
     }

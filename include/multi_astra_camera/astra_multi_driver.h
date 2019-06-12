@@ -35,6 +35,7 @@ class AstraMultiDriver
 {
 public:
   AstraMultiDriver(ros::NodeHandle& n, ros::NodeHandle& pnh);
+  ~AstraMultiDriver();
 
 private:
   ros::NodeHandle& nh_;

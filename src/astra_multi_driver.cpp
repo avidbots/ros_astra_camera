@@ -18,6 +18,12 @@ AstraMultiDriver::AstraMultiDriver(ros::NodeHandle& n, ros::NodeHandle& pnh) :
   astra_register_sub_ = nh_.subscribe("/astra_registration", 10, &AstraMultiDriver::RegistrationCallback, this);
 }
 
+AstraMultiDriver::~AstraMultiDriver()
+{
+  astra_register_sub_.shutdown();
+  openni::OpenNI::shutdown();
+}
+
 void AstraMultiDriver::RegistrationCallback(const multi_astra_camera::astra_registration_info::ConstPtr& msg)
 {
   ROS_INFO_STREAM(GetLogPrefix("AstraMultiDriver", msg->ns) << "serial_no: " << msg->serial_no << ", is_advanced: " << (int)msg->is_advanced);

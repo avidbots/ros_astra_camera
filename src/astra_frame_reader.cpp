@@ -188,7 +188,7 @@ void AstraFrameReader::ReadOneFrame(const std::string& uri, FrameContext& contex
 
   if (frame_contexts_.size() == 2)
   {
-    usleep(51 * 1000);
+    usleep(50 * 1000);
     context.TurnOnProjector(true);
   }
   else

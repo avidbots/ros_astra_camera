@@ -58,6 +58,7 @@ AstraDevice::AstraDevice(const std::string& device_URI, const std::string& ns) t
     use_device_time_(false),
     ns_(ns)
 {
+  ROS_INFO_STREAM(GetLogPrefix("AstraDevice", ns_) << "Construct");
   openni::Status rc;
 
   openni_device_ = boost::make_shared<openni::Device>();
@@ -269,7 +270,6 @@ void AstraDevice::startIRStream()
 
 void AstraDevice::startColorStream()
 {
-  ROS_INFO("AstraDevice::startColorStream");
   boost::shared_ptr<openni::VideoStream> stream = getColorVideoStream();
 
   if (stream)

@@ -173,10 +173,21 @@ AstraDriver::AstraDriver(const ros::NodeHandle& n, const ros::NodeHandle& pnh, c
     ROS_INFO("Waiting for dynamic reconfigure configuration.");
     boost::this_thread::sleep(boost::posix_time::milliseconds(100));
   }
-  ROS_INFO("Dynamic reconfigure configuration received.");
 
   setHealthTimers();
   advertiseROSTopics();
+
+  // Start color streaming first to avoid starting depth streaming before starting color streaming
+  if (!rgb_preferred_)
+  {
+    if (device_ && device_->isColorStreamStarted()) device_->stopColorStream();
+    if (device_ && !device_->isIRStreamStarted()) device_->startIRStream();
+  }
+  else
+  {
+    if (device_ && device_->isIRStreamStarted()) device_->stopIRStream();
+    if (device_ && !device_->isColorStreamStarted()) device_->startColorStream();
+  }
 }
 
 AstraDriver::~AstraDriver()
@@ -213,10 +224,12 @@ bool AstraDriver::EnableStreaming(std_srvs::SetBool::Request &req, std_srvs::Set
   {
     if (!rgb_preferred_)
     {
+      if (device_ && device_->isColorStreamStarted()) device_->stopColorStream();
       if (device_ && !device_->isIRStreamStarted()) device_->startIRStream();
     }
     else
     {
+      if (device_ && device_->isIRStreamStarted()) device_->stopIRStream();
       if (device_ && !device_->isColorStreamStarted()) device_->startColorStream();
     }
 
@@ -348,6 +361,7 @@ void AstraDriver::configCb(Config &config, uint32_t level)
   color_time_offset_ = ros::Duration(config.color_time_offset);
   depth_time_offset_ = ros::Duration(config.depth_time_offset);
 
+  ROS_INFO_STREAM(GetLogPrefix("configCb", ns_) << "color_mode: " << config.color_mode);
   if (lookupVideoModeFromDynConfig(config.ir_mode, ir_video_mode_)<0)
   {
     ROS_ERROR("Undefined IR video mode received from dynamic reconfigure");
@@ -361,6 +375,7 @@ void AstraDriver::configCb(Config &config, uint32_t level)
   }
 
   ROS_INFO_STREAM(GetLogPrefix("configCb", ns_) << "depth_mode: " << config.depth_mode);
+
   if (lookupVideoModeFromDynConfig(config.depth_mode, depth_video_mode_)<0)
   {
     ROS_ERROR("Undefined depth video mode received from dynamic reconfigure");
@@ -393,8 +408,6 @@ void AstraDriver::configCb(Config &config, uint32_t level)
   config_init_ = true;
 
   old_config_ = config;
-
-  ROS_INFO("AstraDriver::configCb, depth_data_skip_: %d", depth_data_skip_);
 }
 
 void AstraDriver::setIRVideoMode(const AstraVideoMode& ir_video_mode)
@@ -498,9 +511,9 @@ void AstraDriver::applyConfigToOpenNIDevice()
   }
 
   device_->setUseDeviceTimer(use_device_time_);
-
 }
 
+// imageConnectCb won't be able to start/stop color stream because of usb communication issue
 void AstraDriver::imageConnectCb()
 {
   boost::lock_guard<boost::mutex> lock(connect_mutex_);
@@ -525,8 +538,8 @@ void AstraDriver::imageConnectCb()
     if (!color_started)
     {
       if (enable_streaming_) {
-        ROS_INFO("Starting color stream.");
-        device_->startColorStream();
+        ROS_WARN_STREAM(GetLogPrefix("imageConnectCb", ns_) << "Color streaming should've been started, color streaming only can be controlled by construct and EnableStreaming()");
+        //device_->startColorStream();
       }
     }
   }
@@ -538,15 +551,15 @@ void AstraDriver::imageConnectCb()
 
     if (color_started)
     {
-      ROS_INFO("Stopping color stream.");
-      device_->stopColorStream();
+      // color streaming only can be controlled by construct and EnableStreaming()
+      //device_->stopColorStream();
     }
 
     if (!ir_started)
     {
       if (enable_streaming_) {
         ROS_INFO("Starting IR stream.");
-        device_->startIRStream();
+        device_->startIRStream(); // TODO: IR streaming could have the same usb port communication issue with rgb streaming, since it isn't used for now, we live with it
       }
     }
   }
@@ -554,8 +567,8 @@ void AstraDriver::imageConnectCb()
   {
     if (color_started)
     {
-      ROS_INFO("Stopping color stream.");
-      device_->stopColorStream();
+      // color streaming only can be controlled by construct and EnableStreaming()
+      //device_->stopColorStream();
     }
     if (ir_started)
     {
