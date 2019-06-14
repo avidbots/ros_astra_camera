@@ -294,7 +294,7 @@ void AstraDriver::advertiseROSTopics()
   {
     image_transport::SubscriberStatusCallback itssc = boost::bind(&AstraDriver::imageConnectCb, this);
     ros::SubscriberStatusCallback rssc = boost::bind(&AstraDriver::imageConnectCb, this);
-    pub_color_ = color_it.advertiseCamera("image", 1, itssc, itssc, rssc, rssc);
+    pub_color_ = color_it.advertiseCamera("image_raw", 1, itssc, itssc, rssc, rssc);
   }
 
   if (device_->hasIRSensor())
