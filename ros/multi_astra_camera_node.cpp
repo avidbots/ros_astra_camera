@@ -1,5 +1,4 @@
 #include "astra_camera/multi_astra_driver.h"
-#include "astra_camera/astra_driver.h"
 
 int main(int argc, char **argv){
 

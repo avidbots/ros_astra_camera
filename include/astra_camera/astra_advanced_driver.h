@@ -52,6 +52,7 @@
 
 #include "astra_camera/astra_device_manager.h"
 #include "astra_camera/astra_device.h"
+#include "astra_camera/astra_advanced_device.h"
 #include "astra_camera/astra_video_mode.h"
 #include "astra_camera/GetSerial.h"
 
@@ -60,10 +61,11 @@
 namespace astra_wrapper
 {
 
-class AstraDriver
+class AstraAdvancedDriver
 {
 public:
-  AstraDriver(const ros::NodeHandle& n, const ros::NodeHandle& pnh) ;
+  AstraAdvancedDriver(const ros::NodeHandle& n, const ros::NodeHandle& pnh, const std::string& ns, const std::string& serial_no, const bool is_advanced) ;
+  ~AstraAdvancedDriver();
 
 private:
   typedef astra_camera::AstraConfig Config;
@@ -108,6 +110,7 @@ private:
   void setDepthVideoMode(const AstraVideoMode& depth_video_mode);
 
   bool EnableStreaming(std_srvs::SetBool::Request &req, std_srvs::SetBool::Response &res);
+  void ResetThis();
 
   ros::NodeHandle nh_;
   ros::NodeHandle pnh_;
@@ -116,6 +119,7 @@ private:
   boost::shared_ptr<AstraDevice> device_;
 
   std::string device_id_;
+  std::string ns_;
 
   /** \brief get_serial server*/
   ros::ServiceServer get_serial_server;
@@ -167,10 +171,6 @@ private:
   int color_data_skip_;
   int depth_data_skip_;
 
-  int data_skip_ir_counter_;
-  int data_skip_color_counter_;
-  int data_skip_depth_counter_;
-
   bool rgb_preferred_;
 
   bool auto_exposure_;
@@ -190,7 +190,9 @@ private:
   ros::ServiceServer enable_streaming_srv_;
   std::string enable_streaming_srv_name_;
   bool enable_streaming_;
-  std::string ns_;
+
+  bool is_advanced_;
+  ros::Publisher reset_pub_;
 };
 
 }

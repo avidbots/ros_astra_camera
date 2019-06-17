@@ -82,6 +82,7 @@ add_dependencies(astra_wrapper ${PROJECT_NAME}_gencfg ${PROJECT_NAME}_generate_m
 
 add_library(astra_driver_lib
                 src/astra_driver.cpp
+                src/astra_advanced_driver.cpp
                 src/multi_astra_driver.cpp
 )
 target_link_libraries(astra_driver_lib astra_wrapper ${catkin_LIBRARIES} ${Boost_LIBRARIES} -lOpenNI2 )

@@ -25,7 +25,7 @@
 #include "astra_camera/GetSerial.h"
 
 #include "astra_camera/astra_device_manager.h"
-#include "astra_camera/astra_driver.h"
+#include "astra_camera/astra_advanced_driver.h"
 #include "astra_camera/astra_registration_info.h"
 
 namespace astra_wrapper
@@ -42,7 +42,7 @@ private:
   ros::NodeHandle& pnh_;
   boost::shared_ptr<AstraDeviceManager> device_manager_;
 
-  std::map<std::string, boost::shared_ptr<AstraDriver>> astras_;
+  std::map<std::string, boost::shared_ptr<AstraAdvancedDriver>> astras_;
 
   ros::Subscriber astra_register_sub_;
 
