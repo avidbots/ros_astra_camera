@@ -1,4 +1,4 @@
-#include "multi_astra_camera/COBDevice.h"
+#include "astra_camera/COBDevice.h"
 #include <iostream>
 
 struct _device_vid_pid {

@@ -31,8 +31,8 @@
  */
 #include "openni2/OpenNI.h"
 
-#include "multi_astra_camera/astra_frame_listener.h"
-#include "multi_astra_camera/astra_timer_filter.h"
+#include "astra_camera/astra_frame_listener.h"
+#include "astra_camera/astra_timer_filter.h"
 
 #include <sensor_msgs/image_encodings.h>
 

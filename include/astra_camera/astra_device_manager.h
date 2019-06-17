@@ -30,26 +30,50 @@
  *      Author: Tim Liu (liuhua@orbbec.com)
  */
 
+#ifndef ASTRA_DEVICE_MANAGER_H_
+#define ASTRA_DEVICE_MANAGER_H_
 
-#ifndef ASTRA_CONVERT_H_
-#define ASTRA_CONVERT_H_
+#include "astra_camera/astra_device_info.h"
 
-#include "multi_astra_camera/astra_device_info.h"
-#include "multi_astra_camera/astra_video_mode.h"
-
-#include "openni2/OpenNI.h"
+#include <boost/thread/mutex.hpp>
 
 #include <vector>
+#include <string>
+#include <ostream>
 
 namespace astra_wrapper
 {
 
-const AstraDeviceInfo astra_convert(const openni::DeviceInfo* pInfo);
+class AstraDeviceListener;
+class AstraDevice;
+class AstraAdvancedDevice;
 
-const AstraVideoMode astra_convert(const openni::VideoMode& input);
-const openni::VideoMode astra_convert(const AstraVideoMode& input);
+class AstraDeviceManager
+{
+public:
+  AstraDeviceManager();
+  virtual ~AstraDeviceManager();
 
-const std::vector<AstraVideoMode> astra_convert(const openni::Array<openni::VideoMode>& input);
+  static boost::shared_ptr<AstraDeviceManager> getSingelton();
+
+  boost::shared_ptr<std::vector<AstraDeviceInfo> > getConnectedDeviceInfos() const;
+  boost::shared_ptr<std::vector<std::string> > getConnectedDeviceURIs() const;
+  std::size_t getNumOfConnectedDevices() const;
+
+  boost::shared_ptr<AstraDevice> getAnyDevice();
+  boost::shared_ptr<AstraDevice> getDevice(const std::string& device_URI, const bool is_advanced = false, const std::string& ns = "", const std::string& serial_no = "");
+
+  std::string getSerial(const std::string& device_URI) const;
+
+protected:
+  boost::shared_ptr<AstraDeviceListener> device_listener_;
+
+  static boost::shared_ptr<AstraDeviceManager> singelton_;
+};
+
+
+std::ostream& operator <<(std::ostream& stream, const AstraDeviceManager& device_manager);
+
 }
 
 #endif

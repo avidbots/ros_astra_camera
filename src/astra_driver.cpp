@@ -30,9 +30,9 @@
  *      Author: Tim Liu (liuhua@orbbec.com)
  */
 
-#include "multi_astra_camera/astra_driver.h"
-#include "multi_astra_camera/astra_exception.h"
-#include "multi_astra_camera/astra_registration_info.h"
+#include "astra_camera/astra_driver.h"
+#include "astra_camera/astra_exception.h"
+#include "astra_camera/astra_registration_info.h"
 
 #include <openni2/OpenNI.h>
 
@@ -71,13 +71,15 @@ AstraDriver::AstraDriver(const ros::NodeHandle& n, const ros::NodeHandle& pnh, c
 {
   genVideoModeTableMap();
 
+  if (ns_.empty()) pnh_.getParam("ns", ns_);
+
   readConfigFromParameterServer();
 
   // Create service for enable/disable streaming
-  enable_streaming_srv_ = nh_.advertiseService("/" + ns_ + pnh_.getNamespace() + "/enable_streams", &AstraDriver::EnableStreaming, this);
+  enable_streaming_srv_ = nh_.advertiseService("/" + ns_ + "/driver/enable_streams", &AstraDriver::EnableStreaming, this);
   enable_streaming_ = true;
 
-  reset_pub_ = nh_.advertise<multi_astra_camera::astra_registration_info>("/astra_registration", 1); // Must be initialized before initDevice, since initDevice might use this publisher
+  reset_pub_ = nh_.advertise<astra_camera::astra_registration_info>("/astra_registration", 1); // Must be initialized before initDevice, since initDevice might use this publisher
 
 #if MULTI_ASTRA
 	int bootOrder, devnums;
@@ -251,7 +253,7 @@ bool AstraDriver::EnableStreaming(std_srvs::SetBool::Request &req, std_srvs::Set
 void AstraDriver::ResetThis()
 {
   ROS_WARN_STREAM(GetLogPrefix("ResetThis", ns_));
-  multi_astra_camera::astra_registration_info msg;
+  astra_camera::astra_registration_info msg;
   msg.ns = ns_;
   msg.serial_no = "serial_" + device_id_;
   msg.is_advanced = is_advanced_;
@@ -337,15 +339,14 @@ void AstraDriver::advertiseROSTopics()
 
 }
 
-bool AstraDriver::getSerialCb(multi_astra_camera::GetSerialRequest& req, multi_astra_camera::GetSerialResponse& res) {
+bool AstraDriver::getSerialCb(astra_camera::GetSerialRequest& req, astra_camera::GetSerialResponse& res) {
   res.serial = device_manager_->getSerial(device_->getUri());
   return true;
 }
 
 void AstraDriver::configCb(Config &config, uint32_t level)
 {
-  ROS_INFO("AstraDriver::configCb");
-  bool stream_reset = false;
+  ROS_INFO_STREAM(GetLogPrefix("configCb", ns_));
 
   rgb_preferred_ = config.rgb_preferred;
 
@@ -823,11 +824,7 @@ sensor_msgs::CameraInfoPtr AstraDriver::getProjectorCameraInfo(int width, int he
 
 void AstraDriver::readConfigFromParameterServer()
 {
-  //if (!pnh_.getParam("device_id", device_id_))
-  //{
-  //  ROS_WARN ("~device_id is not set! Using first device.");
-  //  device_id_ = "#1";
-  //}
+  pnh_.getParam("device_id", device_id_);
 
   // Camera TF frames
   pnh_.param("/" + ns_ + "/ir_frame_id", ir_frame_id_, std::string("/openni_ir_optical_frame"));
@@ -881,7 +878,7 @@ std::string AstraDriver::resolveDeviceURI(const std::string& device_id) throw(As
   }
   // look for '<bus>@<number>' format
   //   <bus>    is usb bus id, typically start at 1
-  //   <number> is the device number, for consistency with multi_astra_camera, these start at 1
+  //   <number> is the device number, for consistency with astra_camera, these start at 1
   //               although 0 specifies "any device on this bus"
   else if (device_id.size() > 1 && device_id.find('@') != std::string::npos && device_id.find('/') == std::string::npos)
   {
@@ -994,7 +991,12 @@ void AstraDriver::initDevice()
     std::string device_URI = resolveDeviceURI(device_id_);
     ROS_INFO_STREAM(GetLogPrefix("initDevice", ns_) << "device_id_: " << device_id_ << ", resolved uri: " << device_URI);
     if (device_URI.length() > 0) 
+    {
+      namespace bi = boost::interprocess;
+      bi::named_mutex usb_mutex{bi::open_or_create, "usb_mutex"};
+      bi::scoped_lock<bi::named_mutex> lock(usb_mutex);
       device_ = device_manager_->getDevice(device_URI, is_advanced_, ns_, device_id_);
+    }
     else
     {
       ROS_ERROR_STREAM(GetLogPrefix("initDevice", ns_) << "empty uri");

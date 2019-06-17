@@ -42,7 +42,7 @@
 #include <std_srvs/SetBool.h>
 
 #include <dynamic_reconfigure/server.h>
-#include <multi_astra_camera/AstraConfig.h>
+#include <astra_camera/AstraConfig.h>
 
 #include <image_transport/image_transport.h>
 #include <camera_info_manager/camera_info_manager.h>
@@ -50,11 +50,11 @@
 #include <string>
 #include <vector>
 
-#include "multi_astra_camera/astra_device_manager.h"
-#include "multi_astra_camera/astra_device.h"
-#include "multi_astra_camera/astra_advanced_device.h"
-#include "multi_astra_camera/astra_video_mode.h"
-#include "multi_astra_camera/GetSerial.h"
+#include "astra_camera/astra_device_manager.h"
+#include "astra_camera/astra_device.h"
+#include "astra_camera/astra_advanced_device.h"
+#include "astra_camera/astra_video_mode.h"
+#include "astra_camera/GetSerial.h"
 
 #include <ros/ros.h>
 
@@ -64,11 +64,11 @@ namespace astra_wrapper
 class AstraDriver
 {
 public:
-  AstraDriver(const ros::NodeHandle& n, const ros::NodeHandle& pnh, const std::string& ns, const std::string& serial_no, const bool is_advanced) ;
+  AstraDriver(const ros::NodeHandle& n, const ros::NodeHandle& pnh, const std::string& ns="", const std::string& serial_no="", const bool is_advanced=false) ;
   ~AstraDriver();
 
 private:
-  typedef multi_astra_camera::AstraConfig Config;
+  typedef astra_camera::AstraConfig Config;
   typedef dynamic_reconfigure::Server<Config> ReconfigureServer;
 
   void newIRFrameCallback(sensor_msgs::ImagePtr image);
@@ -94,7 +94,7 @@ private:
   void imageConnectCb();
   void depthConnectCb();
 
-  bool getSerialCb(multi_astra_camera::GetSerialRequest& req, multi_astra_camera::GetSerialResponse& res);
+  bool getSerialCb(astra_camera::GetSerialRequest& req, astra_camera::GetSerialResponse& res);
 
   void configCb(Config &config, uint32_t level);
 

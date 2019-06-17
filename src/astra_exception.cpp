@@ -35,7 +35,7 @@
  *  POSSIBILITY OF SUCH DAMAGE.
  *
  */
-#include "multi_astra_camera/astra_exception.h"
+#include "astra_camera/astra_exception.h"
 #include <sstream>
 
 namespace astra_wrapper
@@ -82,4 +82,4 @@ unsigned AstraException::getLineNumber () const throw ()
   return line_number_;
 }
 
-} //namespace multi_astra_camera
+} //namespace astra_camera

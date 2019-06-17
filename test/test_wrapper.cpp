@@ -30,8 +30,8 @@
  *      Author: Tim Liu (liuhua@orbbec.com)
  */
 
-#include "multi_astra_camera/astra_device_manager.h"
-#include "multi_astra_camera/astra_device.h"
+#include "astra_camera/astra_device_manager.h"
+#include "astra_camera/astra_device.h"
 
 #include <boost/date_time/posix_time/posix_time.hpp>
 #include <boost/thread/thread.hpp>

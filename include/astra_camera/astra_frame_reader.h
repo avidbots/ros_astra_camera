@@ -1,9 +1,9 @@
 #ifndef ASTRA_FRAME_READER_H_
 #define ASTRA_FRAME_READER_H_ 
 
-#include "multi_astra_camera/astra_device.h"
+#include "astra_camera/astra_device.h"
 #include "openni2/OpenNI.h"
-#include "multi_astra_camera/COBDevice.h"
+#include "astra_camera/COBDevice.h"
 
 #include <ros/ros.h>
 #include <sensor_msgs/Image.h>

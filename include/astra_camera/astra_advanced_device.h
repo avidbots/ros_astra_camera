@@ -1,8 +1,8 @@
 #ifndef ASTRA_ADVANCED_DEVICE_H
 #define ASTRA_ADVANCED_DEVICE_H
 
-#include "multi_astra_camera/astra_device.h"
-#include "multi_astra_camera/astra_frame_reader.h"
+#include "astra_camera/astra_device.h"
+#include "astra_camera/astra_frame_reader.h"
 
 namespace astra_wrapper
 {

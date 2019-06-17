@@ -30,49 +30,54 @@
  *      Author: Tim Liu (liuhua@orbbec.com)
  */
 
-#ifndef ASTRA_DEVICE_MANAGER_H_
-#define ASTRA_DEVICE_MANAGER_H_
+#ifndef ASTRA_FRAME_LISTENER_H_
+#define ASTRA_FRAME_LISTENER_H_
 
-#include "multi_astra_camera/astra_device_info.h"
+#include "astra_camera/astra_device.h"
 
-#include <boost/thread/mutex.hpp>
+#include <sensor_msgs/Image.h>
 
 #include <vector>
-#include <string>
-#include <ostream>
+
+#include "openni2/OpenNI.h"
 
 namespace astra_wrapper
 {
 
-class AstraDeviceListener;
-class AstraDevice;
-class AstraAdvancedDevice;
+class AstraTimerFilter;
 
-class AstraDeviceManager
+class AstraFrameListener : public openni::VideoStream::NewFrameListener
 {
 public:
-  AstraDeviceManager();
-  virtual ~AstraDeviceManager();
+  AstraFrameListener();
 
-  static boost::shared_ptr<AstraDeviceManager> getSingelton();
+  virtual ~AstraFrameListener()
+  { };
 
-  boost::shared_ptr<std::vector<AstraDeviceInfo> > getConnectedDeviceInfos() const;
-  boost::shared_ptr<std::vector<std::string> > getConnectedDeviceURIs() const;
-  std::size_t getNumOfConnectedDevices() const;
+  void onNewFrame(openni::VideoStream& stream);
 
-  boost::shared_ptr<AstraDevice> getAnyDevice();
-  boost::shared_ptr<AstraDevice> getDevice(const std::string& device_URI, const bool is_advanced = false, const std::string& ns = "", const std::string& serial_no = "");
+  void setCallback(FrameCallbackFunction& callback)
+  {
+    callback_ = callback;
+  }
 
-  std::string getSerial(const std::string& device_URI) const;
+  void setUseDeviceTimer(bool enable);
 
-protected:
-  boost::shared_ptr<AstraDeviceListener> device_listener_;
+  void setDataSkip(const int data_skip) { data_skip_counter_ = 0; data_skip_ = data_skip; }
 
-  static boost::shared_ptr<AstraDeviceManager> singelton_;
+private:
+  openni::VideoFrameRef m_frame;
+
+  FrameCallbackFunction callback_;
+
+  bool user_device_timer_;
+  boost::shared_ptr<AstraTimerFilter> timer_filter_;
+
+  double prev_time_stamp_;
+
+  int data_skip_counter_;
+  int data_skip_;
 };
-
-
-std::ostream& operator <<(std::ostream& stream, const AstraDeviceManager& device_manager);
 
 }
 

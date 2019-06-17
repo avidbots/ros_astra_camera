@@ -3,11 +3,11 @@
 #include <boost/lexical_cast.hpp>
 #include <boost/algorithm/string/replace.hpp>
 
-#include "multi_astra_camera/astra_driver.h"
-#include "multi_astra_camera/astra_advanced_device.h"
-#include "multi_astra_camera/astra_exception.h"
-#include "multi_astra_camera/astra_convert.h"
-#include "multi_astra_camera/astra_frame_listener.h"
+#include "astra_camera/astra_driver.h"
+#include "astra_camera/astra_advanced_device.h"
+#include "astra_camera/astra_exception.h"
+#include "astra_camera/astra_convert.h"
+#include "astra_camera/astra_frame_listener.h"
 
 #include <boost/shared_ptr.hpp>
 #include <boost/make_shared.hpp>

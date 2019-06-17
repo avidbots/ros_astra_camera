@@ -30,72 +30,18 @@
  *      Author: Tim Liu (liuhua@orbbec.com)
  */
 
-#include "astra_camera/astra_convert.h"
-#include "astra_camera/astra_exception.h"
+#include "astra_camera/astra_driver.h"
 
-#include <boost/make_shared.hpp>
+int main(int argc, char **argv){
 
-#include <string>
+  ROS_INFO("astra_camera_node init");
+  ros::init(argc, argv, "astra_camera_node");
+  ros::NodeHandle n;
+  ros::NodeHandle pnh("~");
 
-namespace astra_wrapper
-{
+  astra_wrapper::AstraDriver drv(n, pnh);
 
-const AstraDeviceInfo astra_convert(const openni::DeviceInfo* pInfo)
-{
-  if (!pInfo)
-    THROW_OPENNI_EXCEPTION("astra_convert called with zero pointer\n");
+  ros::spin();
 
-  AstraDeviceInfo output;
-
-  output.name_       = pInfo->getName();
-  output.uri_        = pInfo->getUri();
-  output.vendor_     = pInfo->getVendor();
-  output.product_id_ = pInfo->getUsbProductId();
-  output.vendor_id_  = pInfo->getUsbVendorId();
-
-  return output;
+  return 0;
 }
-
-
-const AstraVideoMode astra_convert(const openni::VideoMode& input)
-{
-  AstraVideoMode output;
-
-  output.x_resolution_ = input.getResolutionX();
-  output.y_resolution_ = input.getResolutionY();
-  output.frame_rate_ = input.getFps();
-  output.pixel_format_ = static_cast<PixelFormat>(input.getPixelFormat());
-
-  return output;
-}
-
-const openni::VideoMode astra_convert(const AstraVideoMode& input)
-{
-
-  openni::VideoMode output;
-
-  output.setResolution(input.x_resolution_, input.y_resolution_);
-  output.setFps(input.frame_rate_);
-  output.setPixelFormat(static_cast<openni::PixelFormat>(input.pixel_format_));
-
-  return output;
-}
-
-
-const std::vector<AstraVideoMode> astra_convert(const openni::Array<openni::VideoMode>& input)
-{
-  std::vector<AstraVideoMode> output;
-
-  int size = input.getSize();
-
-  output.reserve(size);
-
-  for (int i=0; i<size; ++i)
-    output.push_back(astra_convert(input[i]));
-
-  return output;
-}
-
-}
-
-

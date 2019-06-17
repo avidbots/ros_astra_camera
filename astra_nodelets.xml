@@ -1,9 +1,16 @@
-<library path="lib/libmulti_astra_camera_nodelet">
+<library path="lib/libastra_camera_nodelet">
 
-  <class name="multi_astra_camera/AstraDriverNodelet" type="multi_astra_camera::AstraDriverNodelet" base_class_type="nodelet::Nodelet">
+  <class name="astra_camera/AstraDriverNodelet" type="astra_camera::AstraDriverNodelet" base_class_type="nodelet::Nodelet">
     <description>
       Astra camera driver nodelet.
     </description>
   </class>
+
+  <class name="astra_camera/MultiAstraDriverNodelet" type="astra_camera::MultiAstraDriverNodelet" base_class_type="nodelet::Nodelet">
+    <description>
+      Multiple Astra camera driver nodelet.
+    </description>
+  </class>
+
 
 </library>
