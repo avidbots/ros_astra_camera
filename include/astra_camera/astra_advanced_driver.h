@@ -67,6 +67,8 @@ public:
   AstraAdvancedDriver(const ros::NodeHandle& n, const ros::NodeHandle& pnh, const std::string& ns, const std::string& serial_no, const bool is_advanced) ;
   ~AstraAdvancedDriver();
 
+  bool IsInitSucceed() const { return device_ != nullptr; }
+
 private:
   typedef astra_camera::AstraConfig Config;
   typedef dynamic_reconfigure::Server<Config> ReconfigureServer;

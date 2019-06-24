@@ -32,6 +32,7 @@
 
 #include "astra_camera/astra_driver.h"
 #include "astra_camera/astra_exception.h"
+#include "astra_camera/astra_registration_info.h"
 
 #include <openni2/OpenNI.h>
 
@@ -74,6 +75,8 @@ AstraDriver::AstraDriver(const ros::NodeHandle& n, const ros::NodeHandle& pnh) :
   ns_= std::string(depth_frame_id_, 0, depth_frame_id_.find("depth") - 1); // The ns_ is only used for logging info
   enable_streaming_srv_ = pnh_.advertiseService("enable_streams", &AstraDriver::EnableStreaming, this);
   enable_streaming_ = true;
+
+  reset_pub_ = nh_.advertise<astra_camera::astra_registration_info>("/astra_registration", 1); // Must be initialized before initDevice, since initDevice might use this publisher
 
 #if MULTI_ASTRA
 	int bootOrder, devnums;
@@ -207,14 +210,21 @@ bool AstraDriver::EnableStreaming(std_srvs::SetBool::Request &req, std_srvs::Set
   return true;
 }
 
+void AstraDriver::ResetThis()
+{
+  ROS_WARN_STREAM(GetLogPrefix("ResetThis", ns_));
+  astra_camera::astra_registration_info msg;
+  msg.ns = ns_;
+  msg.serial_no = "serial_" + device_id_;
+  msg.is_advanced = false;
+  reset_pub_.publish(msg);
+}
+
 void AstraDriver::setHealthTimers() {
   auto reset_this = [this](const ros::TimerEvent&) -> void
   {
-    ROS_WARN_STREAM("Astra " << ns_ << " driver timeout! Resetting");
-    const auto nh = nh_;
-    const auto pnh = pnh_;
-    this->~AstraDriver();
-    new (this) AstraDriver(nh, pnh);
+    ROS_WARN_STREAM(GetLogPrefix("setHealthTimers", ns_) << "driver timeout! Resetting");
+    ResetThis();
   };
   depth_callback_timer_ = nh_.createTimer(depth_callback_timeout_, reset_this, false, false);
 }

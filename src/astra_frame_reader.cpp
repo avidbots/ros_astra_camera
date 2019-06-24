@@ -82,7 +82,7 @@ void AstraFrameReader::ReadOneFrame(const std::string& uri, FrameContext& contex
   auto ret = openni::OpenNI::waitForAnyStream(&p, 1, &pStreamIndex, 165); // Must add this, since readFrame is a blocking method
   if (ret != openni::STATUS_OK)
   {
-    ROS_ERROR_STREAM_THROTTLE(5, GetLogPrefix("AstraFrameReader", context.ns) << "reading frame timeout!");
+    ROS_ERROR_STREAM_THROTTLE(10, GetLogPrefix("AstraFrameReader", context.ns) << "reading frame timeout!");
     return;
   }
 

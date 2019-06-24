@@ -108,6 +108,7 @@ private:
   void setDepthVideoMode(const AstraVideoMode& depth_video_mode);
 
   bool EnableStreaming(std_srvs::SetBool::Request &req, std_srvs::SetBool::Response &res);
+  void ResetThis();
 
   ros::NodeHandle nh_;
   ros::NodeHandle pnh_;
@@ -191,6 +192,7 @@ private:
   std::string enable_streaming_srv_name_;
   bool enable_streaming_;
   std::string ns_;
+  ros::Publisher reset_pub_;
 };
 
 }
