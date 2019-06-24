@@ -122,7 +122,12 @@ AstraAdvancedDriver::AstraAdvancedDriver(const ros::NodeHandle& n, const ros::No
 #else
 
   initDevice();
-  if (!device_) return;
+  if (!device_)
+  {
+    depth_callback_timeout_.sleep();
+    ResetThis();
+    return;
+  }
 
 #endif
   device_->setDepthFrameCallback(boost::bind(&AstraAdvancedDriver::newDepthFrameCallback, this, _1));
