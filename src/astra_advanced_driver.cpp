@@ -749,7 +749,7 @@ void AstraAdvancedDriver::readConfigFromParameterServer()
 
   pnh_.param("/" + ns_ + "/rgb_camera_info_url", color_info_url_, std::string());
   pnh_.param("/" + ns_ + "/depth_camera_info_url", ir_info_url_, std::string());
-  double depth_callback_timeout = 5; // seconds
+  double depth_callback_timeout = 30; // seconds
   pnh_.param("/" + ns_ + "/depth_callback_timeout", depth_callback_timeout, depth_callback_timeout);
   depth_callback_timeout_ = ros::Duration(depth_callback_timeout);
 }
