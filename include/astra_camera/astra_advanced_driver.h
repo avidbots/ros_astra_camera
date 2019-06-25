@@ -197,6 +197,8 @@ private:
 
   bool is_advanced_;
   ros::Publisher reset_pub_;
+
+  bool stop_initdevice_;
 };
 
 }
