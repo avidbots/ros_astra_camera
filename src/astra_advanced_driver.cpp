@@ -71,6 +71,22 @@ void AstraAdvancedDriver::Init()
 
   setHealthTimers();
   advertiseROSTopics();
+
+  device_->setDepthFrameCallback(boost::bind(&AstraAdvancedDriver::newDepthFrameCallback, this, _1));
+  device_->setColorFrameCallback(boost::bind(&AstraAdvancedDriver::newColorFrameCallback, this, _1));
+  device_->setIRFrameCallback(boost::bind(&AstraAdvancedDriver::newIRFrameCallback, this, _1));
+
+  // Start color streaming first to avoid starting depth streaming before starting color streaming
+  if (!rgb_preferred_)
+  {
+    if (device_ && device_->isColorStreamStarted()) device_->stopColorStream();
+    if (device_ && !device_->isIRStreamStarted()) device_->startIRStream();
+  }
+  else
+  {
+    if (device_ && device_->isIRStreamStarted()) device_->stopIRStream();
+    if (device_ && !device_->isColorStreamStarted()) device_->startColorStream();
+  }
 }
 
 void AstraAdvancedDriver::Destroy()
@@ -929,23 +945,6 @@ void AstraAdvancedDriver::initDevice()
   else
     ROS_INFO_STREAM(GetLogPrefix("initDevice", ns_) << "FINISHED");
 
-  if (!device_) return;
-
-  device_->setDepthFrameCallback(boost::bind(&AstraAdvancedDriver::newDepthFrameCallback, this, _1));
-  device_->setColorFrameCallback(boost::bind(&AstraAdvancedDriver::newColorFrameCallback, this, _1));
-  device_->setIRFrameCallback(boost::bind(&AstraAdvancedDriver::newIRFrameCallback, this, _1));
-
-  // Start color streaming first to avoid starting depth streaming before starting color streaming
-  if (!rgb_preferred_)
-  {
-    if (device_ && device_->isColorStreamStarted()) device_->stopColorStream();
-    if (device_ && !device_->isIRStreamStarted()) device_->startIRStream();
-  }
-  else
-  {
-    if (device_ && device_->isIRStreamStarted()) device_->stopIRStream();
-    if (device_ && !device_->isColorStreamStarted()) device_->startColorStream();
-  }
 }
 
 void AstraAdvancedDriver::genVideoModeTableMap()
