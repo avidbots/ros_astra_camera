@@ -67,8 +67,6 @@ public:
   AstraAdvancedDriver(const ros::NodeHandle& n, const ros::NodeHandle& pnh, const std::string& ns, const std::string& serial_no, const bool is_advanced) ;
   ~AstraAdvancedDriver();
 
-  bool IsInitSucceed() const { return device_ != nullptr; }
-
 private:
   typedef astra_camera::AstraConfig Config;
   typedef dynamic_reconfigure::Server<Config> ReconfigureServer;
@@ -89,6 +87,9 @@ private:
   // resolves non-URI device IDs to URIs, e.g. '#1' is resolved to the URI of the first device
   std::string resolveDeviceURI(const std::string& device_id) throw(AstraException);
   void initDevice();
+
+  void Init();
+  void Destroy();
 
   void setHealthTimers();
   void advertiseROSTopics();
@@ -111,7 +112,8 @@ private:
   void setColorVideoMode(const AstraVideoMode& color_video_mode);
   void setDepthVideoMode(const AstraVideoMode& depth_video_mode);
 
-  bool EnableStreaming(std_srvs::SetBool::Request &req, std_srvs::SetBool::Response &res);
+  bool EnableStreamsSrvCallback(std_srvs::SetBool::Request &req, std_srvs::SetBool::Response &res);
+  void EnableStreaming(const bool& enable);
   void ResetThis();
 
   ros::NodeHandle nh_;

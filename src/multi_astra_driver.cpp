@@ -33,7 +33,6 @@ void MultiAstraDriver::RegistrationCallback(const astra_camera::astra_registrati
   if (astras_.find(serial_no) == astras_.end())
   {
     astras_[serial_no] = boost::make_shared<AstraAdvancedDriver>(nh_, pnh_, msg->ns, serial_no, msg->is_advanced);
-    if (msg->is_advanced && !astras_[serial_no]->IsInitSucceed()) astras_[serial_no] = nullptr;
   }
   else
   {
