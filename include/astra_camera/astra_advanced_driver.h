@@ -37,6 +37,7 @@
 #include <boost/cstdint.hpp>
 #include <boost/bind.hpp>
 #include <boost/function.hpp>
+#include <thread>  
 
 #include <sensor_msgs/Image.h>
 #include <std_srvs/SetBool.h>
@@ -66,6 +67,8 @@ class AstraAdvancedDriver
 public:
   AstraAdvancedDriver(const ros::NodeHandle& n, const ros::NodeHandle& pnh, const std::string& ns, const std::string& serial_no, const bool is_advanced) ;
   ~AstraAdvancedDriver();
+
+  bool IsInit() const { return device_ != nullptr; }
 
 private:
   typedef astra_camera::AstraConfig Config;
@@ -196,9 +199,8 @@ private:
   bool enable_streaming_;
 
   bool is_advanced_;
-  ros::Publisher reset_pub_;
-
-  bool stop_initdevice_;
+  bool stop_init_;
+  std::thread reset_thread_;
 };
 
 }
