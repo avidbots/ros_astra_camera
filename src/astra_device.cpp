@@ -49,17 +49,17 @@
 namespace astra_wrapper
 {
 
-AstraDevice::AstraDevice(const std::string& device_URI) throw (AstraException) :
+AstraDevice::AstraDevice(const std::string& device_URI, const std::string& ns) throw (AstraException) :
     openni_device_(),
     ir_video_started_(false),
     color_video_started_(false),
     depth_video_started_(false),
     image_registration_activated_(false),
-    use_device_time_(false)
+    use_device_time_(false),
+    ns_(ns)
 {
-  openni::Status rc = openni::OpenNI::initialize();
-  if (rc != openni::STATUS_OK)
-    THROW_OPENNI_EXCEPTION("Initialize failed\n%s\n", openni::OpenNI::getExtendedError());
+  ROS_INFO_STREAM(GetLogPrefix("AstraDevice", ns_) << "Construct");
+  openni::Status rc;
 
   openni_device_ = boost::make_shared<openni::Device>();
 
@@ -69,7 +69,9 @@ AstraDevice::AstraDevice(const std::string& device_URI) throw (AstraException) :
   }
   else
   {
-    rc = openni_device_->open(openni::ANY_DEVICE);
+    //rc = openni_device_->open(openni::ANY_DEVICE);
+    ROS_ERROR_STREAM(GetLogPrefix("AstraDevice", ns_) << "empty uri, opening failed!");
+    THROW_OPENNI_EXCEPTION("Device open failed\n%s\n", openni::OpenNI::getExtendedError());
   }
 
   if (rc != openni::STATUS_OK)
@@ -84,11 +86,11 @@ AstraDevice::AstraDevice(const std::string& device_URI) throw (AstraException) :
   ir_frame_listener = boost::make_shared<AstraFrameListener>();
   color_frame_listener = boost::make_shared<AstraFrameListener>();
   depth_frame_listener = boost::make_shared<AstraFrameListener>();
-
 }
 
 AstraDevice::~AstraDevice()
 {
+  ROS_INFO("AstraDevice::~AstraDevice");
   stopAllStreams();
 
   shutdown();
@@ -253,6 +255,7 @@ bool AstraDevice::hasDepthSensor() const
 
 void AstraDevice::startIRStream()
 {
+  ROS_INFO("AstraDevice::startIRStream");
   boost::shared_ptr<openni::VideoStream> stream = getIRVideoStream();
 
   if (stream)
@@ -279,6 +282,7 @@ void AstraDevice::startColorStream()
 }
 void AstraDevice::startDepthStream()
 {
+  ROS_INFO("AstraDevice::startDepthStream, START");
   boost::shared_ptr<openni::VideoStream> stream = getDepthVideoStream();
 
   if (stream)
@@ -310,6 +314,7 @@ void AstraDevice::stopIRStream()
 }
 void AstraDevice::stopColorStream()
 {
+  ROS_INFO("AstraDevice::stopColorStream");
   if (color_video_stream_.get() != 0)
   {
     color_video_started_ = false;
@@ -737,5 +742,9 @@ std::ostream& operator <<(std::ostream& stream, const AstraDevice& device)
 
   return stream;
 }
+
+void AstraDevice::setIRDataSkip(const int data_skip) { ir_frame_listener->setDataSkip(data_skip); }
+void AstraDevice::setColorDataSkip(const int data_skip) { color_frame_listener->setDataSkip(data_skip); }
+void AstraDevice::setDepthDataSkip(const int data_skip) { depth_frame_listener->setDataSkip(data_skip); }
 
 }

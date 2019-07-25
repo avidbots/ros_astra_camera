@@ -47,7 +47,9 @@ AstraFrameListener::AstraFrameListener() :
     callback_(0),
     user_device_timer_(false),
     timer_filter_(new AstraTimerFilter(TIME_FILTER_LENGTH)),
-    prev_time_stamp_(0.0)
+    prev_time_stamp_(0.0),
+    data_skip_counter_(0),
+    data_skip_(1)
 {
   ros::Time::init();
 }
@@ -62,6 +64,9 @@ void AstraFrameListener::setUseDeviceTimer(bool enable)
 
 void AstraFrameListener::onNewFrame(openni::VideoStream& stream)
 {
+  if ((++data_skip_counter_)%data_skip_!=0) return;
+  data_skip_counter_ = 0;
+
   stream.readFrame(&m_frame);
 
   if (m_frame.isValid() && callback_)

@@ -46,6 +46,7 @@ public:
 private:
   virtual void onInit()
   {
+    ROS_INFO("AstraDriverNodelet::onInit");
     lp.reset(new astra_wrapper::AstraDriver(getNodeHandle(), getPrivateNodeHandle()));
   };
 

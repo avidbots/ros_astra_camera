@@ -38,6 +38,13 @@ endif()
 generate_dynamic_reconfigure_options(cfg/Astra.cfg)
 add_service_files(FILES
   GetSerial.srv)
+
+add_message_files(
+  DIRECTORY msg
+  FILES
+  astra_registration_info.msg
+  )
+
 generate_messages()
 
 catkin_package(
@@ -53,30 +60,37 @@ include_directories(include
                     ${catkin_INCLUDE_DIRS}
                     ${Boost_INCLUDE_DIRS}
                     3rdparty/OpenNI2/Include
+                    3rdparty/LibUSB/Include
                     )
 
 add_library(astra_wrapper
    src/astra_convert.cpp
    src/astra_device.cpp
+   src/astra_advanced_device.cpp
    src/astra_device_info.cpp
    src/astra_timer_filter.cpp
    src/astra_frame_listener.cpp
+   src/astra_frame_reader.cpp
    src/astra_device_manager.cpp
    src/astra_exception.cpp
    src/astra_video_mode.cpp
+   src/COBDevice.cpp
 )
-target_link_libraries(astra_wrapper ${catkin_LIBRARIES} -lOpenNI2
+target_link_libraries(astra_wrapper ${catkin_LIBRARIES} -lOpenNI2 -lrt -lusb-1.0
   ${Boost_LIBRARIES} )
 add_dependencies(astra_wrapper ${PROJECT_NAME}_gencfg ${PROJECT_NAME}_generate_messages_cpp)
 
 add_library(astra_driver_lib
                 src/astra_driver.cpp
+                src/astra_advanced_driver.cpp
+                src/multi_astra_driver.cpp
 )
 target_link_libraries(astra_driver_lib astra_wrapper ${catkin_LIBRARIES} ${Boost_LIBRARIES} -lOpenNI2 )
 add_dependencies(astra_driver_lib ${PROJECT_NAME}_gencfg ${PROJECT_NAME}_generate_messages_cpp)
 
 add_library(astra_camera_nodelet
-   ros/astra_camera_nodelet.cpp
+  ros/astra_camera_nodelet.cpp
+  ros/multi_astra_camera_nodelet.cpp
 )
 target_link_libraries(astra_camera_nodelet astra_driver_lib ${catkin_LIBRARIES} ${Boost_LIBRARIES} -lOpenNI2 )
 add_dependencies(astra_camera_nodelet ${PROJECT_NAME}_gencfg)
@@ -86,6 +100,13 @@ add_executable(astra_camera_node
 )
 target_link_libraries(astra_camera_node astra_driver_lib ${catkin_LIBRARIES} ${Boost_LIBRARIES} -lOpenNI2 )
 add_dependencies(astra_camera_node ${PROJECT_NAME}_gencfg ${PROJECT_NAME}_generate_messages_cpp)
+
+add_executable(multi_astra_camera_node
+  ros/multi_astra_camera_node.cpp
+)
+target_link_libraries(multi_astra_camera_node astra_driver_lib ${catkin_LIBRARIES} ${Boost_LIBRARIES} -lOpenNI2 )
+add_dependencies(multi_astra_camera_node ${PROJECT_NAME}_gencfg ${PROJECT_NAME}_generate_messages_cpp)
+
 
 add_executable(astra_list_devices
    src/list_devices.cpp
@@ -99,7 +120,7 @@ if (UNIX AND NOT APPLE)
   set(ADDITIONAL_EXECUTABLES "astra_usb_reset")
 endif()
 
-install(TARGETS astra_wrapper astra_camera_nodelet astra_camera_node astra_list_devices astra_driver_lib ${ADDITIONAL_EXECUTABLES}
+install(TARGETS astra_wrapper astra_camera_nodelet astra_camera_node multi_astra_camera_node astra_list_devices astra_driver_lib ${ADDITIONAL_EXECUTABLES}
   ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
   LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
   RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}

@@ -49,6 +49,8 @@
 #include <string>
 #include <vector>
 
+#define GetLogPrefix(class_name, ns) "ASTRA_DRIVER_LOG::" + std::string(class_name) + "::" + __func__ + "::" + std::string(ns) + ", "                                              
+
 namespace openni
 {
 class Device;
@@ -67,7 +69,7 @@ class AstraFrameListener;
 class AstraDevice
 {
 public:
-  AstraDevice(const std::string& device_URI) throw (AstraException);
+  AstraDevice(const std::string& device_URI, const std::string& ns = "camera") throw (AstraException);
   virtual ~AstraDevice();
 
   const std::string getUri() const;
@@ -86,13 +88,13 @@ public:
 
   void startIRStream();
   void startColorStream();
-  void startDepthStream();
+  virtual void startDepthStream();
 
   void stopAllStreams();
 
   void stopIRStream();
   void stopColorStream();
-  void stopDepthStream();
+  virtual void stopDepthStream();
 
   bool isIRStreamStarted();
   bool isColorStreamStarted();
@@ -121,9 +123,13 @@ public:
   void setColorVideoMode(const AstraVideoMode& video_mode) throw (AstraException);
   void setDepthVideoMode(const AstraVideoMode& video_mode) throw (AstraException);
 
+  void setIRDataSkip(const int data_skip);
+  void setColorDataSkip(const int data_skip);
+  void setDepthDataSkip(const int data_skip);
+
   void setIRFrameCallback(FrameCallbackFunction callback);
   void setColorFrameCallback(FrameCallbackFunction callback);
-  void setDepthFrameCallback(FrameCallbackFunction callback);
+  virtual void setDepthFrameCallback(FrameCallbackFunction callback);
 
   float getIRFocalLength (int output_y_resolution) const;
   float getColorFocalLength (int output_y_resolution) const;
@@ -136,7 +142,7 @@ public:
   bool getAutoExposure() const;
   bool getAutoWhiteBalance() const;
 
-  void setUseDeviceTimer(bool enable);
+  virtual void setUseDeviceTimer(bool enable);
 
 protected:
   void shutdown();
@@ -168,6 +174,7 @@ protected:
   bool image_registration_activated_;
 
   bool use_device_time_;
+  std::string ns_;
 };
 
 std::ostream& operator << (std::ostream& stream, const AstraDevice& device);

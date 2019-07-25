@@ -6,4 +6,11 @@
     </description>
   </class>
 
+  <class name="astra_camera/MultiAstraDriverNodelet" type="astra_camera::MultiAstraDriverNodelet" base_class_type="nodelet::Nodelet">
+    <description>
+      Multiple Astra camera driver nodelet.
+    </description>
+  </class>
+
+
 </library>
