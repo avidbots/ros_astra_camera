@@ -16,10 +16,10 @@ MultiAstraDriver::MultiAstraDriver(ros::NodeHandle& n, ros::NodeHandle& pnh) :
   if (rc != openni::STATUS_OK)
     THROW_OPENNI_EXCEPTION("Initialize failed\n%s\n", openni::OpenNI::getExtendedError());
 
-  double sleep_time_before_read = 0.;
-  double sleep_time_after_read = 0.;
-  pnh_.param("sleep_time_before_read", sleep_time_before_read, 10.); 
-  pnh_.param("sleep_time_after_read", sleep_time_after_read, 70.); 
+  double sleep_time_before_read = 20.;
+  double sleep_time_after_read = 62.;
+  pnh_.param("sleep_time_before_read", sleep_time_before_read, sleep_time_before_read); 
+  pnh_.param("sleep_time_after_read", sleep_time_after_read, sleep_time_after_read); 
   AstraFrameReader::getSingleton()->SetSleepTime(sleep_time_before_read, sleep_time_after_read);
 
   astra_register_sub_ = nh_.subscribe("/astra_registration", 10, &MultiAstraDriver::RegistrationCallback, this);

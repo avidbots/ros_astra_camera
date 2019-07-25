@@ -24,8 +24,8 @@ AstraFrameReader::AstraFrameReader() :
     reading_(true),
     pause_(false),
     paused_(false),
-    sleep_time_before_read_(10),
-    sleep_time_after_read_(70)
+    sleep_time_before_read_(20),
+    sleep_time_after_read_(60)
 {
   ros::Time::init();
   ros::NodeHandle nh;
