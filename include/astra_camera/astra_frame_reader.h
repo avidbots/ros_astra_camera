@@ -24,12 +24,15 @@ public:
   struct FrameContext
   {
     boost::shared_ptr<openni::VideoStream> depth_video_stream;
+    boost::shared_ptr<openni::VideoStream> color_video_stream;
     std::string uri;
     std::string ns;
     std::string serial_no;
     openni::VideoFrameRef depth_frame;
+    openni::VideoFrameRef color_frame;
     COBDevice cob_device;
-    FrameCallbackFunction callback;
+    FrameCallbackFunction depth_callback;
+    FrameCallbackFunction color_callback;
     bool projector_control;
 
     void TurnOnProjector(const bool turn_on)
@@ -55,7 +58,7 @@ public:
 
   static boost::shared_ptr<AstraFrameReader> getSingleton();
 
-  void setCallback(const std::string& uri, FrameCallbackFunction& callback)
+  void setDepthCallback(const std::string& uri, FrameCallbackFunction& depth_callback)
   {
     auto context_iter = projector_control_frame_contexts_.find(uri);
     bool projector_control = false;
@@ -77,11 +80,41 @@ public:
 
     if (projector_control)
     {
-      projector_control_frame_contexts_[uri]->callback = callback;
+      projector_control_frame_contexts_[uri]->depth_callback = depth_callback;
     }
     else
     {
-      non_projector_control_frame_contexts_[uri]->callback = callback;
+      non_projector_control_frame_contexts_[uri]->depth_callback = depth_callback;
+    }
+  }
+
+  void setColorCallback(const std::string& uri, FrameCallbackFunction& color_callback)
+  {
+    auto context_iter = projector_control_frame_contexts_.find(uri);
+    bool projector_control = false;
+    if (context_iter == projector_control_frame_contexts_.end())
+    {
+      context_iter = non_projector_control_frame_contexts_.find(uri);
+      if (context_iter == non_projector_control_frame_contexts_.end())
+      {
+        ROS_INFO_STREAM(GetLogPrefix("AstraFrameReader", uri) << "doesn't exist!");
+        return;
+      }
+      else
+      {
+        projector_control = false;
+      }
+    }
+    else
+      projector_control = true;
+
+    if (projector_control)
+    {
+      projector_control_frame_contexts_[uri]->color_callback = color_callback;
+    }
+    else
+    {
+      non_projector_control_frame_contexts_[uri]->color_callback = color_callback;
     }
   }
 
@@ -90,13 +123,18 @@ public:
   void Start();
   void Stop();
 
-  void Register(const std::string& uri, const std::string& ns, const std::string& serail_no, const boost::shared_ptr<openni::VideoStream>& video_stream, const bool projector_contol);
-  void Unregister(const std::string& uri);
+  void RegisterDepth(const std::string& uri, const std::string& ns, const std::string& serail_no, const boost::shared_ptr<openni::VideoStream>& depth_stream, const bool projector_contol);
+  void UnregisterDepth(const std::string& uri);
+  void RegisterColor(const std::string& uri, const std::string& ns, const std::string& serail_no, const boost::shared_ptr<openni::VideoStream>& color_stream, const bool projector_contol);
+  void UnregisterColor(const std::string& uri);
+  void UnregisterCamera(const std::string& uri);
 
 private:
   bool user_device_timer_;
   boost::shared_ptr<AstraTimerFilter> depth_timer_filter_;
   double depth_prev_time_stamp_;
+  boost::shared_ptr<AstraTimerFilter> color_timer_filter_;
+  double color_prev_time_stamp_;
   bool reading_;
   bool projector_control_pause_;
   bool projector_control_paused_;

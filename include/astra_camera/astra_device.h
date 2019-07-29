@@ -87,13 +87,13 @@ public:
   bool hasDepthSensor() const;
 
   void startIRStream();
-  void startColorStream();
+  virtual void startColorStream();
   virtual void startDepthStream();
 
-  void stopAllStreams();
+  virtual void stopAllStreams();
 
   void stopIRStream();
-  void stopColorStream();
+  virtual void stopColorStream();
   virtual void stopDepthStream();
 
   bool isIRStreamStarted();
@@ -128,7 +128,7 @@ public:
   void setDepthDataSkip(const int data_skip);
 
   void setIRFrameCallback(FrameCallbackFunction callback);
-  void setColorFrameCallback(FrameCallbackFunction callback);
+  virtual void setColorFrameCallback(FrameCallbackFunction callback);
   virtual void setDepthFrameCallback(FrameCallbackFunction callback);
 
   float getIRFocalLength (int output_y_resolution) const;
@@ -178,7 +178,6 @@ protected:
 };
 
 std::ostream& operator << (std::ostream& stream, const AstraDevice& device);
-
 }
 
 #endif /* OPENNI_DEVICE_H */

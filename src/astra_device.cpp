@@ -235,7 +235,6 @@ bool AstraDevice::isDepthVideoModeSupported(const AstraVideoMode& video_mode) co
   }
 
   return supported;
-
 }
 
 bool AstraDevice::hasIRSensor() const
@@ -280,6 +279,7 @@ void AstraDevice::startColorStream()
     color_video_started_ = true;
   }
 }
+
 void AstraDevice::startDepthStream()
 {
   ROS_INFO("AstraDevice::startDepthStream, START");
