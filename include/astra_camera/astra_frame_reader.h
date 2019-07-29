@@ -23,7 +23,7 @@ class AstraFrameReader
 public:
   struct FrameContext
   {
-    boost::shared_ptr<openni::VideoStream> video_stream;
+    boost::shared_ptr<openni::VideoStream> depth_video_stream;
     std::string uri;
     std::string ns;
     std::string serial_no;
@@ -74,8 +74,8 @@ public:
 
 private:
   bool user_device_timer_;
-  boost::shared_ptr<AstraTimerFilter> timer_filter_;
-  double prev_time_stamp_;
+  boost::shared_ptr<AstraTimerFilter> depth_timer_filter_;
+  double depth_prev_time_stamp_;
   bool reading_;
   bool pause_;
   bool paused_;
@@ -88,7 +88,8 @@ private:
   static boost::shared_ptr<AstraFrameReader> singleton_;
 
   void ReadFrames();
-  void ReadOneFrame(const std::string& uri, FrameContext& context);
+  void ReadRgbAndDepthFrame(const std::string& uri, FrameContext& context);
+  void ReadFrame(const std::string& ns, openni::VideoStream& video_stream, openni::VideoFrameRef* video_frame, FrameCallbackFunction& callback, AstraTimerFilter& timer_filter, double& prev_time_stamp);
 };
 
 }

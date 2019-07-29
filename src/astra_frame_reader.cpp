@@ -19,8 +19,8 @@ boost::shared_ptr<AstraFrameReader> AstraFrameReader::singleton_;
 
 AstraFrameReader::AstraFrameReader() :
     user_device_timer_(false),
-    timer_filter_(new AstraTimerFilter(TIME_FILTER_LENGTH)),
-    prev_time_stamp_(0.0),
+    depth_timer_filter_(new AstraTimerFilter(TIME_FILTER_LENGTH)),
+    depth_prev_time_stamp_(0.0),
     reading_(true),
     pause_(false),
     paused_(false)
@@ -51,7 +51,7 @@ void AstraFrameReader::setUseDeviceTimer(bool enable)
   user_device_timer_ = enable;
 
   if (user_device_timer_)
-    timer_filter_->clear();
+    depth_timer_filter_->clear();
 }
 
 void AstraFrameReader::ReadFrames()
@@ -71,14 +71,14 @@ void AstraFrameReader::ReadFrames()
 
   for (auto& context : frame_contexts_)
   {
-    ReadOneFrame(context.first, *(context.second));
+    ReadRgbAndDepthFrame(context.first, *(context.second));
   }
 }
 
-void AstraFrameReader::ReadOneFrame(const std::string& uri, FrameContext& context)
+void AstraFrameReader::ReadRgbAndDepthFrame(const std::string& uri, FrameContext& context)
 {
   int pStreamIndex(0);
-  auto p = context.video_stream.get();
+  auto p = context.depth_video_stream.get();
   auto ret = openni::OpenNI::waitForAnyStream(&p, 1, &pStreamIndex, 165); // Must add this, since readFrame is a blocking method
   if (ret != openni::STATUS_OK)
   {
@@ -92,9 +92,22 @@ void AstraFrameReader::ReadOneFrame(const std::string& uri, FrameContext& contex
     usleep(30 * 1000);
   }
 
-  context.video_stream->readFrame(&context.depth_frame);
+  ReadFrame(context.ns, *context.depth_video_stream, &context.depth_frame, context.callback, *depth_timer_filter_, depth_prev_time_stamp_);
 
-  if (context.depth_frame.isValid() && context.callback)
+  if (frame_contexts_.size() == 2)
+  {
+    usleep(50 * 1000);
+    context.TurnOnProjector(true);
+  }
+  else
+    usleep(165 * 1000);
+}
+
+void AstraFrameReader::ReadFrame(const std::string& ns, openni::VideoStream& video_stream, openni::VideoFrameRef* video_frame, FrameCallbackFunction& callback, AstraTimerFilter& timer_filter, double& prev_time_stamp)
+{
+  video_stream.readFrame(video_frame);
+
+  if (video_frame->isValid() && callback)
   {
     sensor_msgs::ImagePtr image(new sensor_msgs::Image);
 
@@ -104,44 +117,44 @@ void AstraFrameReader::ReadOneFrame(const std::string& uri, FrameContext& contex
     {
       image->header.stamp = ros_now;
 
-      ROS_DEBUG_STREAM(GetLogPrefix("AstraFrameReader", context.ns) << "Time interval between frames: " << (float)((ros_now.toSec()-prev_time_stamp_)*1000.0) << " ms");
+      ROS_DEBUG_STREAM(GetLogPrefix("AstraFrameReader", ns) << "Time interval between frames: " << (float)((ros_now.toSec()-prev_time_stamp)*1000.0) << " ms");
 
-      prev_time_stamp_ = ros_now.toSec();
+      prev_time_stamp = ros_now.toSec();
     }
     else
     {
-      uint64_t device_time = context.depth_frame.getTimestamp();
+      uint64_t device_time = video_frame->getTimestamp();
 
       double device_time_in_sec = static_cast<double>(device_time)/1000000.0;
       double ros_time_in_sec = ros_now.toSec();
 
       double time_diff = ros_time_in_sec-device_time_in_sec;
 
-      timer_filter_->addSample(time_diff);
+      timer_filter.addSample(time_diff);
 
-      double filtered_time_diff = timer_filter_->getMedian();
+      double filtered_time_diff = timer_filter.getMedian();
 
       double corrected_timestamp = device_time_in_sec+filtered_time_diff;
 
       image->header.stamp.fromSec(corrected_timestamp);
 
-      ROS_DEBUG("Time interval between frames: %.4f ms", (float)((corrected_timestamp-prev_time_stamp_)*1000.0));
-      ROS_DEBUG_STREAM(GetLogPrefix("AstraFrameReader", context.ns) << "Time interval between frames: " << (float)((corrected_timestamp-prev_time_stamp_)*1000.0) << " ms");
+      ROS_DEBUG("Time interval between frames: %.4f ms", (float)((corrected_timestamp-prev_time_stamp)*1000.0));
+      ROS_DEBUG_STREAM(GetLogPrefix("AstraFrameReader", ns) << "Time interval between frames: " << (float)((corrected_timestamp-prev_time_stamp)*1000.0) << " ms");
 
-      prev_time_stamp_ = corrected_timestamp;
+      prev_time_stamp = corrected_timestamp;
     }
 
-    image->width = context.depth_frame.getWidth();
-    image->height = context.depth_frame.getHeight();
+    image->width = video_frame->getWidth();
+    image->height = video_frame->getHeight();
 
-    std::size_t data_size = context.depth_frame.getDataSize();
+    std::size_t data_size = video_frame->getDataSize();
 
     image->data.resize(data_size);
-    memcpy(&image->data[0], context.depth_frame.getData(), data_size);
+    memcpy(&image->data[0], video_frame->getData(), data_size);
 
     image->is_bigendian = 0;
 
-    const openni::VideoMode& video_mode = context.depth_frame.getVideoMode();
+    const openni::VideoMode& video_mode = video_frame->getVideoMode();
     switch (video_mode.getPixelFormat())
     {
       case openni::PIXEL_FORMAT_DEPTH_1_MM:
@@ -179,21 +192,12 @@ void AstraFrameReader::ReadOneFrame(const std::string& uri, FrameContext& contex
         break;
       case openni::PIXEL_FORMAT_JPEG:
       default:
-        ROS_ERROR_STREAM(GetLogPrefix("AstraFrameReader", context.ns) << "invalid image encoding!");
+        ROS_ERROR_STREAM(GetLogPrefix("AstraFrameReader", ns) << "invalid image encoding!");
         break;
     }
 
-    context.callback(image);
+    callback(image);
   }
-
-  if (frame_contexts_.size() == 2)
-  {
-    usleep(50 * 1000);
-    context.TurnOnProjector(true);
-  }
-  else
-    usleep(165 * 1000);
-
 }
 
 void AstraFrameReader::Start()
@@ -231,7 +235,7 @@ void AstraFrameReader::Register(const std::string& uri, const std::string& ns, c
     context->ns = ns;
     context->uri = uri;
     context->serial_no = serial_no;
-    context->video_stream = video_stream;
+    context->depth_video_stream = video_stream;
     context->cob_device.InitDevice();                                                                                                                                                 
     context->cob_device.OpenDevice(uri.c_str());
     frame_contexts_[uri] = context;
