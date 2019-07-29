@@ -10,7 +10,7 @@ namespace astra_wrapper
 class AstraAdvancedDevice : public AstraDevice
 {
  public: 
-  AstraAdvancedDevice(const std::string& device_URI, const std::string& ns, const std::string& serial_no) throw (AstraException);
+  AstraAdvancedDevice(const std::string& device_URI, const std::string& ns, const std::string& serial_no, const bool projector_control) throw (AstraException);
   virtual ~AstraAdvancedDevice();
 
   void startDepthStream();
@@ -23,6 +23,7 @@ class AstraAdvancedDevice : public AstraDevice
   std::string uri_;
   std::string serial_no_;
   FrameCallbackFunction callback_;
+  bool projector_control_;
 };
 
 }

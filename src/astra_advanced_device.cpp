@@ -17,11 +17,12 @@
 namespace astra_wrapper
 {
 
-AstraAdvancedDevice::AstraAdvancedDevice(const std::string& device_URI, const std::string& ns, const std::string& serial_no) throw (AstraException) : 
+AstraAdvancedDevice::AstraAdvancedDevice(const std::string& device_URI, const std::string& ns, const std::string& serial_no, const bool projector_control) throw (AstraException) : 
   AstraDevice(device_URI, ns),
   uri_(device_URI),
   serial_no_(serial_no),
-  callback_(0)
+  callback_(0),
+  projector_control_(projector_control)
 {
   ROS_INFO_STREAM(GetLogPrefix("AstraAdvancedDevice", ns) << "uri: " << uri_ << ", serial_no: " << serial_no);
   depth_frame_reader_ = AstraFrameReader::getSingleton();
@@ -48,7 +49,7 @@ void AstraAdvancedDevice::startDepthStream()
   {
     stream->setMirroringEnabled(false);
     stream->start();
-    depth_frame_reader_->Register(uri_, ns_, serial_no_, stream);
+    depth_frame_reader_->Register(uri_, ns_, serial_no_, stream, projector_control_);
     depth_frame_reader_->setCallback(uri_, callback_);
     depth_video_started_ = true;
   }
@@ -84,4 +85,3 @@ void AstraAdvancedDevice::setDepthFrameCallback(FrameCallbackFunction callback)
 }
 
 }
-
