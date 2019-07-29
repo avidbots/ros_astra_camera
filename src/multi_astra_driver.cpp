@@ -26,19 +26,19 @@ MultiAstraDriver::~MultiAstraDriver()
 
 void MultiAstraDriver::RegistrationCallback(const astra_camera::astra_registration_info::ConstPtr& msg)
 {
-  ROS_INFO_STREAM(GetLogPrefix("MultiAstraDriver", msg->ns) << "serial_no: " << msg->serial_no << ", is_advanced: " << (int)msg->is_advanced);
+  ROS_INFO_STREAM(GetLogPrefix("MultiAstraDriver", msg->ns) << "serial_no: " << msg->serial_no << ", projector_control: " << (int)msg->projector_control);
 
   std::string serial_no = msg->serial_no;
   serial_no.erase(0, 7); // Discard prefix "serial_"
   if (astras_.find(serial_no) == astras_.end())
   {
-    astras_[serial_no] = boost::make_shared<AstraAdvancedDriver>(nh_, pnh_, msg->ns, serial_no, msg->is_advanced);
+    astras_[serial_no] = boost::make_shared<AstraAdvancedDriver>(nh_, pnh_, msg->ns, serial_no, msg->projector_control);
   }
   else
   {
     ROS_INFO_STREAM(GetLogPrefix("MultiAstraDriver", msg->ns) << "had been registered, destory it frist, then create a new instance!");
     astras_[serial_no] = nullptr; // Must do this to make sure the desconstruct will be called before creating a new instance
-    astras_[serial_no] = boost::make_shared<AstraAdvancedDriver>(nh_, pnh_, msg->ns, serial_no, msg->is_advanced);
+    astras_[serial_no] = boost::make_shared<AstraAdvancedDriver>(nh_, pnh_, msg->ns, serial_no, msg->projector_control);
   }
 }
 

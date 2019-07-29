@@ -65,7 +65,7 @@ namespace astra_wrapper
 class AstraAdvancedDriver
 {
 public:
-  AstraAdvancedDriver(const ros::NodeHandle& n, const ros::NodeHandle& pnh, const std::string& ns, const std::string& serial_no, const bool is_advanced) ;
+  AstraAdvancedDriver(const ros::NodeHandle& n, const ros::NodeHandle& pnh, const std::string& ns, const std::string& serial_no, const bool projector_control) ;
   ~AstraAdvancedDriver();
 
   bool IsInit() const { return device_ != nullptr; }
@@ -198,7 +198,7 @@ private:
   std::string enable_streaming_srv_name_;
   bool enable_streaming_;
 
-  bool is_advanced_;
+  bool projector_control_;
   bool stop_init_;
   std::thread reset_thread_;
 };

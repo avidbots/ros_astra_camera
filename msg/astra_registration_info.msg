@@ -1,3 +1,3 @@
 string ns
 string serial_no
-bool is_advanced
+bool projector_control

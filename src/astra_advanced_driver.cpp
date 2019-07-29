@@ -22,7 +22,7 @@
 namespace astra_wrapper
 {
 
-AstraAdvancedDriver::AstraAdvancedDriver(const ros::NodeHandle& n, const ros::NodeHandle& pnh, const std::string& ns, const std::string& serial_no, const bool is_advanced) :
+AstraAdvancedDriver::AstraAdvancedDriver(const ros::NodeHandle& n, const ros::NodeHandle& pnh, const std::string& ns, const std::string& serial_no, const bool projector_control) :
     nh_(n),
     pnh_(pnh),
     device_manager_(AstraDeviceManager::getSingelton()),
@@ -35,7 +35,7 @@ AstraAdvancedDriver::AstraAdvancedDriver(const ros::NodeHandle& n, const ros::No
     depth_subscribers_(false),
     depth_raw_subscribers_(false),
     enable_streaming_(false),
-    is_advanced_(is_advanced),
+    projector_control_(projector_control),
     stop_init_(false)
 {
   if (ns_.empty()) pnh_.getParam("ns", ns_);
@@ -990,7 +990,7 @@ void AstraAdvancedDriver::initDevice()
       bi::named_mutex usb_mutex{bi::open_or_create, "usb_mutex"};
       bi::scoped_lock<bi::named_mutex> lock(usb_mutex);
       if (device_) device_ = nullptr;
-      device_ = device_manager_->getDevice(device_URI, is_advanced_, ns_, device_id_);
+      device_ = device_manager_->getDevice(device_URI, projector_control_, ns_, device_id_);
     }
     else
     {
