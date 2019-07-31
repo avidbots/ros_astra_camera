@@ -53,7 +53,10 @@ void AstraFrameReader::setUseDeviceTimer(bool enable)
   user_device_timer_ = enable;
 
   if (user_device_timer_)
+  {
     depth_timer_filter_->clear();
+    color_timer_filter_->clear();
+  }
 }
 
 void AstraFrameReader::ReadFrames(std::map<std::string, boost::shared_ptr<FrameContext>>& contexts, const bool pause, bool& paused, const bool projector_control)
@@ -245,7 +248,7 @@ void AstraFrameReader::RegisterDepth(const std::string& uri, const std::string& 
   if (projector_control)
   {
     projector_control_pause_ = true;
-    while (!projector_control_paused_ && ros::ok()) usleep(20);
+    while (!projector_control_paused_ && ros::ok()) usleep(20 * 1000);
 
     if (projector_control_frame_contexts_.find(uri) != projector_control_frame_contexts_.end())
     {
@@ -270,7 +273,7 @@ void AstraFrameReader::RegisterDepth(const std::string& uri, const std::string& 
   else
   {
     non_projector_control_pause_ = true;
-    while (!non_projector_control_paused_ && ros::ok()) usleep(20);
+    while (!non_projector_control_paused_ && ros::ok()) usleep(20 * 1000);
 
     if (non_projector_control_frame_contexts_.find(uri) != non_projector_control_frame_contexts_.end())
     {
@@ -302,7 +305,7 @@ void AstraFrameReader::RegisterColor(const std::string& uri, const std::string& 
   if (projector_control)
   {
     projector_control_pause_ = true;
-    while (!projector_control_paused_ && ros::ok()) usleep(20);
+    while (!projector_control_paused_ && ros::ok()) usleep(20 * 1000);
 
     if (projector_control_frame_contexts_.find(uri) != projector_control_frame_contexts_.end())
     {
@@ -327,7 +330,7 @@ void AstraFrameReader::RegisterColor(const std::string& uri, const std::string& 
   else
   {
     non_projector_control_pause_ = true;
-    while (!non_projector_control_paused_ && ros::ok()) usleep(20);
+    while (!non_projector_control_paused_ && ros::ok()) usleep(20 * 1000);
 
     if (non_projector_control_frame_contexts_.find(uri) != non_projector_control_frame_contexts_.end())
     {
@@ -381,7 +384,7 @@ void AstraFrameReader::UnregisterDepth(const std::string& uri)
     projector_control_pause_ = true;
     while (!projector_control_paused_ && ros::ok())
     {
-      usleep(20);
+      usleep(20 * 1000);
     }
 
     projector_control_frame_contexts_[uri]->depth_video_stream = nullptr;
@@ -395,7 +398,7 @@ void AstraFrameReader::UnregisterDepth(const std::string& uri)
     non_projector_control_pause_ = true;
     while (!non_projector_control_paused_ && ros::ok())
     {
-      usleep(20);
+      usleep(20 * 1000);
     }
 
     non_projector_control_frame_contexts_[uri]->depth_video_stream = nullptr; // release the source first
@@ -437,7 +440,7 @@ void AstraFrameReader::UnregisterColor(const std::string& uri)
     projector_control_pause_ = true;
     while (!projector_control_paused_ && ros::ok())
     {
-      usleep(20);
+      usleep(20 * 1000);
     }
 
     projector_control_frame_contexts_[uri]->color_video_stream = nullptr;
@@ -451,7 +454,7 @@ void AstraFrameReader::UnregisterColor(const std::string& uri)
     non_projector_control_pause_ = true;
     while (!non_projector_control_paused_ && ros::ok())
     {
-      usleep(20);
+      usleep(20 * 1000);
     }
 
     non_projector_control_frame_contexts_[uri]->color_video_stream = nullptr; // release the source first
@@ -493,7 +496,7 @@ void AstraFrameReader::UnregisterCamera(const std::string& uri)
     projector_control_pause_ = true;
     while (!projector_control_paused_ && ros::ok())
     {
-      usleep(20);
+      usleep(20 * 1000);
     }
 
     projector_control_frame_contexts_[uri]->TurnOnProjector(false);
@@ -510,7 +513,7 @@ void AstraFrameReader::UnregisterCamera(const std::string& uri)
     non_projector_control_pause_ = true;
     while (!non_projector_control_paused_ && ros::ok())
     {
-      usleep(20);
+      usleep(20 * 1000);
     }
 
     non_projector_control_frame_contexts_[uri]->TurnOnProjector(false);
