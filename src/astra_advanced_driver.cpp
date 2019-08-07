@@ -36,7 +36,8 @@ AstraAdvancedDriver::AstraAdvancedDriver(const ros::NodeHandle& n, const ros::No
     depth_raw_subscribers_(false),
     enable_streaming_(false),
     is_advanced_(is_advanced),
-    stop_init_(false)
+    stop_init_(false),
+    is_resetting_(false)
 {
   if (ns_.empty()) pnh_.getParam("ns", ns_);
   genVideoModeTableMap();
@@ -44,17 +45,32 @@ AstraAdvancedDriver::AstraAdvancedDriver(const ros::NodeHandle& n, const ros::No
   // Create service for enable/disable streaming, keep this service out of Init(), to receive request to reset the camera
   enable_streaming_srv_ = nh_.advertiseService("/" + ns_ + "/driver/enable_streams", &AstraAdvancedDriver::EnableStreamsSrvCallback, this);
 
+  double depth_callback_timeout = 30; // seconds
+  pnh_.param("/" + ns_ + "/depth_callback_timeout", depth_callback_timeout, depth_callback_timeout);
+  depth_callback_timeout_ = ros::Duration(depth_callback_timeout);
+  setHealthTimers();
+
   Init();
 }
 
 void AstraAdvancedDriver::Init()
 {
-  ROS_INFO_STREAM(GetLogPrefix("Init", ns_));
+  ROS_INFO_STREAM(GetLogPrefix("AstraAdvancedDriver", ns_));
+
+  if (IsInit())
+  {
+    ROS_INFO_STREAM(GetLogPrefix("AstraAdvancedDriver", ns_) << "the camera had already been initialized!");
+    return;
+  }
 
   readConfigFromParameterServer(); // The params have to be read first before initDevice
 
   initDevice();
-  if (!IsInit()) return; // Must return if init failed
+  if (!IsInit())
+  {
+    depth_callback_timer_.start();
+    return; // Must return if init failed
+  }
   
   // Initialize dynamic reconfigure
   reconfigure_server_.reset(new ReconfigureServer(ros::NodeHandle("/" + ns_)));
@@ -62,23 +78,23 @@ void AstraAdvancedDriver::Init()
 
   while (!config_init_ && !stop_init_ && ros::ok())
   {
-    ROS_INFO_STREAM(GetLogPrefix("Init", ns_) << "Waiting for dynamic reconfigure configuration.");
+    ROS_INFO_STREAM(GetLogPrefix("AstraAdvancedDriver", ns_) << "Waiting for dynamic reconfigure configuration.");
     boost::this_thread::sleep(boost::posix_time::milliseconds(100));
   }
 
-  setHealthTimers();
   advertiseROSTopics();
 
   device_->setDepthFrameCallback(boost::bind(&AstraAdvancedDriver::newDepthFrameCallback, this, _1));
   device_->setColorFrameCallback(boost::bind(&AstraAdvancedDriver::newColorFrameCallback, this, _1));
   device_->setIRFrameCallback(boost::bind(&AstraAdvancedDriver::newIRFrameCallback, this, _1));
 
+  depth_callback_timer_.setPeriod(depth_callback_timeout_, true);  // Reset the timer, otherwise the next line EnableStreaming(true) will trigger a reset
   EnableStreaming(true); // This Func will make sure color stream being started before depth stream started
 }
 
 void AstraAdvancedDriver::Destroy()
 {
-  ROS_INFO_STREAM(GetLogPrefix("Destroy", ns_));
+  ROS_INFO_STREAM(GetLogPrefix("AstraAdvancedDriver", ns_));
 
   // Stop reset thread
   stop_init_ = true;
@@ -132,16 +148,16 @@ bool AstraAdvancedDriver::EnableStreamsSrvCallback(std_srvs::SetBool::Request &r
     res.message = req.data ? "Enabling streaming succeed" : "Disabling streaming succeed";
   }
 
-  ROS_INFO_STREAM(GetLogPrefix("EnableStreamSrvCallback", ns_) << "FINISHED, req.data: " << (int)req.data << ", enable_streaming_: " << enable_streaming_);
+  ROS_INFO_STREAM(GetLogPrefix("AstraAdvancedDriver", ns_) << "FINISHED, req.data: " << (int)req.data << ", enable_streaming_: " << enable_streaming_);
   return true;
 }
 
 void AstraAdvancedDriver::EnableStreaming(const bool& enable)
 {
-  ROS_INFO_STREAM(GetLogPrefix("EnableStreaming", ns_) << "START, enable: "<< (int)enable << ", enable_streaming_: " << enable_streaming_);
+  ROS_INFO_STREAM(GetLogPrefix("AstraAdvancedDriver", ns_) << "START, enable: "<< (int)enable << ", enable_streaming_: " << enable_streaming_);
   if (!IsInit())
   {
-    ROS_ERROR_STREAM(GetLogPrefix("EnableStreaming", ns_) << "device hasn't been initialized");
+    ROS_ERROR_STREAM(GetLogPrefix("AstraAdvancedDriver", ns_) << "device hasn't been initialized");
     return;
   }
   if (!enable && enable_streaming_) // Disable streaming
@@ -183,24 +199,27 @@ void AstraAdvancedDriver::EnableStreaming(const bool& enable)
 
 void AstraAdvancedDriver::ResetThis()
 {
-  ROS_WARN_STREAM(GetLogPrefix("ResetThis", ns_));
+  if (is_resetting_) return;
+  ROS_WARN_STREAM(GetLogPrefix("AstraAdvancedDriver", ns_));
+  is_resetting_ = true;
   Destroy();
   stop_init_ = false;
   reset_thread_ = std::thread([this]() -> void {
-    while (ros::ok() && !device_ && !stop_init_)
+    while (ros::ok() && !IsInit() && !stop_init_)
     {
-      ROS_ERROR_STREAM(GetLogPrefix("ResetThis", ns_) << "failed to initialize camera");
+      ROS_ERROR_STREAM(GetLogPrefix("AstraAdvancedDriver", ns_) << "failed to initialize camera");
       ros::Duration(5).sleep();
       Init();
     }
-    ROS_INFO_STREAM(GetLogPrefix("ResetThis", ns_) << "reset succeed!");
+    is_resetting_ = false;
+    ROS_INFO_STREAM(GetLogPrefix("AstraAdvancedDriver", ns_) << "reset succeed!");
     });
 }
 
 void AstraAdvancedDriver::setHealthTimers() {
   auto reset_this = [this](const ros::TimerEvent&) -> void
   {
-    ROS_WARN_STREAM(GetLogPrefix("setHealthTimers", ns_) << " driver timeout! Resetting");
+    ROS_WARN_STREAM(GetLogPrefix("AstraAdvancedDriver", ns_) << " driver timeout! Resetting");
     ResetThis();
   };
   depth_callback_timer_ = nh_.createTimer(depth_callback_timeout_, reset_this, false, false);
@@ -210,7 +229,7 @@ void AstraAdvancedDriver::advertiseROSTopics()
 {
   if (!IsInit())
   {
-    ROS_ERROR_STREAM(GetLogPrefix("advertiseROSTopics", ns_) << "device hasn't been initialized");
+    ROS_ERROR_STREAM(GetLogPrefix("AstraAdvancedDriver", ns_) << "device hasn't been initialized");
     return;
   }
 
@@ -284,7 +303,7 @@ void AstraAdvancedDriver::advertiseROSTopics()
 bool AstraAdvancedDriver::getSerialCb(astra_camera::GetSerialRequest& req, astra_camera::GetSerialResponse& res) {
   if (!IsInit())
   {
-    ROS_ERROR_STREAM(GetLogPrefix("getSerialCb", ns_) << "device hasn't been initialized");
+    ROS_ERROR_STREAM(GetLogPrefix("AstraAdvancedDriver", ns_) << "device hasn't been initialized");
     return false;
   }
 
@@ -294,7 +313,7 @@ bool AstraAdvancedDriver::getSerialCb(astra_camera::GetSerialRequest& req, astra
 
 void AstraAdvancedDriver::configCb(Config &config, uint32_t level)
 {
-  ROS_INFO_STREAM(GetLogPrefix("configCb", ns_));
+  ROS_INFO_STREAM(GetLogPrefix("AstraAdvancedDriver", ns_));
 
   rgb_preferred_ = config.rgb_preferred;
 
@@ -310,25 +329,25 @@ void AstraAdvancedDriver::configCb(Config &config, uint32_t level)
   color_time_offset_ = ros::Duration(config.color_time_offset);
   depth_time_offset_ = ros::Duration(config.depth_time_offset);
 
-  ROS_INFO_STREAM(GetLogPrefix("configCb", ns_) << "color_mode: " << config.color_mode);
+  ROS_INFO_STREAM(GetLogPrefix("AstraAdvancedDriver", ns_) << "color_mode: " << config.color_mode);
   if (lookupVideoModeFromDynConfig(config.ir_mode, ir_video_mode_)<0)
   {
-    ROS_ERROR_STREAM(GetLogPrefix("configCb", ns_) << "Undefined IR video mode received from dynamic reconfigure");
+    ROS_ERROR_STREAM(GetLogPrefix("AstraAdvancedDriver", ns_) << "Undefined IR video mode received from dynamic reconfigure");
     exit(-1);
   }
 
   if (lookupVideoModeFromDynConfig(config.color_mode, color_video_mode_)<0)
   {
-    ROS_ERROR_STREAM(GetLogPrefix("configCb", ns_) << "Undefined color video mode received from dynamic reconfigure");
+    ROS_ERROR_STREAM(GetLogPrefix("AstraAdvancedDriver", ns_) << "Undefined color video mode received from dynamic reconfigure");
     exit(-1);
   }
 
   if (lookupVideoModeFromDynConfig(config.depth_mode, depth_video_mode_)<0)
   {
-    ROS_ERROR_STREAM(GetLogPrefix("configCb", ns_) << "Undefined depth video mode received from dynamic reconfigure");
+    ROS_ERROR_STREAM(GetLogPrefix("AstraAdvancedDriver", ns_) << "Undefined depth video mode received from dynamic reconfigure");
     exit(-1);
   }
-  ROS_INFO_STREAM(GetLogPrefix("configCb", ns_) << "depth_video_mode_.frame_rate_: " << depth_video_mode_.frame_rate_ << ", depth_video_mode_.pixel_format_: "
+  ROS_INFO_STREAM(GetLogPrefix("AstraAdvancedDriver", ns_) << "depth_video_mode_.frame_rate_: " << depth_video_mode_.frame_rate_ << ", depth_video_mode_.pixel_format_: "
       << (int)depth_video_mode_.pixel_format_ << ", depth_video_mode_.x_resolution_: " << depth_video_mode_.x_resolution_ << ", depth_video_mode_.y_resolution_: "
       << depth_video_mode_.y_resolution_);
 
@@ -361,7 +380,7 @@ void AstraAdvancedDriver::setIRVideoMode(const AstraVideoMode& ir_video_mode)
 {
   if (!IsInit())
   {
-    ROS_ERROR_STREAM(GetLogPrefix("setIRVideoMode", ns_) << "device hasn't been initialized");
+    ROS_ERROR_STREAM(GetLogPrefix("AstraAdvancedDriver", ns_) << "device hasn't been initialized");
     return;
   }
 
@@ -375,14 +394,14 @@ void AstraAdvancedDriver::setIRVideoMode(const AstraVideoMode& ir_video_mode)
   }
   else
   {
-    ROS_ERROR_STREAM(GetLogPrefix("setIRVideoMode", ns_) << "Unsupported IR video mode - " << ir_video_mode);
+    ROS_ERROR_STREAM(GetLogPrefix("AstraAdvancedDriver", ns_) << "Unsupported IR video mode - " << ir_video_mode);
   }
 }
 void AstraAdvancedDriver::setColorVideoMode(const AstraVideoMode& color_video_mode)
 {
   if (!IsInit())
   {
-    ROS_ERROR_STREAM(GetLogPrefix("setColorVideoMode", ns_) << "device hasn't been initialized");
+    ROS_ERROR_STREAM(GetLogPrefix("AstraAdvancedDriver", ns_) << "device hasn't been initialized");
     return;
   }
 
@@ -395,14 +414,14 @@ void AstraAdvancedDriver::setColorVideoMode(const AstraVideoMode& color_video_mo
   }
   else
   {
-    ROS_ERROR_STREAM(GetLogPrefix("setColorVideoMode", ns_) << "Unsupported color video mode - " << color_video_mode);
+    ROS_ERROR_STREAM(GetLogPrefix("AstraAdvancedDriver", ns_) << "Unsupported color video mode - " << color_video_mode);
   }
 }
 void AstraAdvancedDriver::setDepthVideoMode(const AstraVideoMode& depth_video_mode)
 {
   if (!IsInit())
   {
-    ROS_ERROR_STREAM(GetLogPrefix("setDepthVideoMode", ns_) << "device hasn't been initialized");
+    ROS_ERROR_STREAM(GetLogPrefix("AstraAdvancedDriver", ns_) << "device hasn't been initialized");
     return;
   }
 
@@ -415,7 +434,7 @@ void AstraAdvancedDriver::setDepthVideoMode(const AstraVideoMode& depth_video_mo
   }
   else
   {
-    ROS_ERROR_STREAM(GetLogPrefix("setDepthVideoMode", ns_) << "Unsupported depth video mode - " << depth_video_mode);
+    ROS_ERROR_STREAM(GetLogPrefix("AstraAdvancedDriver", ns_) << "Unsupported depth video mode - " << depth_video_mode);
   }
 }
 
@@ -423,7 +442,7 @@ void AstraAdvancedDriver::applyConfigToOpenNIDevice()
 {
   if (!IsInit())
   {
-    ROS_ERROR_STREAM(GetLogPrefix("applyConfigToOpenNIdevice", ns_) << "device hasn't been initialized");
+    ROS_ERROR_STREAM(GetLogPrefix("AstraAdvancedDriver", ns_) << "device hasn't been initialized");
     return;
   }
 
@@ -489,7 +508,7 @@ void AstraAdvancedDriver::imageConnectCb()
 {
   if (!IsInit())
   {
-    ROS_ERROR_STREAM(GetLogPrefix("imageConnectCb", ns_) << "device hasn't been initialized");
+    ROS_ERROR_STREAM(GetLogPrefix("AstraAdvancedDriver", ns_) << "device hasn't been initialized");
     return;
   }
 
@@ -515,7 +534,7 @@ void AstraAdvancedDriver::imageConnectCb()
     if (!color_started)
     {
       if (enable_streaming_) {
-        ROS_WARN_STREAM(GetLogPrefix("imageConnectCb", ns_) << "Color streaming should've been started, color streaming only can be controlled by construct and EnableStreaming()");
+        ROS_WARN_STREAM(GetLogPrefix("AstraAdvancedDriver", ns_) << "Color streaming should've been started, color streaming only can be controlled by construct and EnableStreaming()");
         //device_->startColorStream();
       }
     }
@@ -559,7 +578,7 @@ void AstraAdvancedDriver::depthConnectCb()
 {
   if (!IsInit())
   {
-    ROS_ERROR_STREAM(GetLogPrefix("depthConnectCb", ns_) << "device hasn't been initialized");
+    ROS_ERROR_STREAM(GetLogPrefix("AstraAdvancedDriver", ns_) << "device hasn't been initialized");
     return;
   }
 
@@ -668,7 +687,7 @@ sensor_msgs::CameraInfoPtr AstraAdvancedDriver::getDefaultCameraInfo(int width, 
   sensor_msgs::CameraInfoPtr info = boost::make_shared<sensor_msgs::CameraInfo>();
   if (!IsInit())
   {
-    ROS_ERROR_STREAM(GetLogPrefix("getDefaultCameraInfo", ns_) << "device hasn't been initialized");
+    ROS_ERROR_STREAM(GetLogPrefix("AstraAdvancedDriver", ns_) << "device hasn't been initialized");
     return info;
   }
 
@@ -804,7 +823,7 @@ sensor_msgs::CameraInfoPtr AstraAdvancedDriver::getProjectorCameraInfo(int width
   sensor_msgs::CameraInfoPtr info = getDepthCameraInfo(width, height, time);
   if (!IsInit())
   {
-    ROS_ERROR_STREAM(GetLogPrefix("getProjectorCameraInfo", ns_) << "device hasn't been initialized");
+    ROS_ERROR_STREAM(GetLogPrefix("AstraAdvancedDriver", ns_) << "device hasn't been initialized");
     return info;
   }
 
@@ -831,9 +850,6 @@ void AstraAdvancedDriver::readConfigFromParameterServer()
 
   pnh_.param("/" + ns_ + "/rgb_camera_info_url", color_info_url_, std::string());
   pnh_.param("/" + ns_ + "/depth_camera_info_url", ir_info_url_, std::string());
-  double depth_callback_timeout = 30; // seconds
-  pnh_.param("/" + ns_ + "/depth_callback_timeout", depth_callback_timeout, depth_callback_timeout);
-  depth_callback_timeout_ = ros::Duration(depth_callback_timeout);
 }
 
 std::string AstraAdvancedDriver::resolveDeviceURI(const std::string& device_id) throw(AstraException)
@@ -979,11 +995,11 @@ std::string AstraAdvancedDriver::resolveDeviceURI(const std::string& device_id) 
 
 void AstraAdvancedDriver::initDevice()
 {
-  ROS_INFO_STREAM(GetLogPrefix("initDevice", ns_) << "STARTED, device_id_: " << device_id_);
+  ROS_INFO_STREAM(GetLogPrefix("AstraAdvancedDriver", ns_) << "STARTED, device_id_: " << device_id_);
   try
   {
     std::string device_URI = resolveDeviceURI(device_id_);
-    ROS_INFO_STREAM(GetLogPrefix("initDevice", ns_) << "device_id_: " << device_id_ << ", resolved uri: " << device_URI);
+    ROS_INFO_STREAM(GetLogPrefix("AstraAdvancedDriver", ns_) << "device_id_: " << device_id_ << ", resolved uri: " << device_URI);
     if (device_URI.length() > 0) 
     {
       namespace bi = boost::interprocess;
@@ -994,26 +1010,26 @@ void AstraAdvancedDriver::initDevice()
     }
     else
     {
-      ROS_ERROR_STREAM(GetLogPrefix("initDevice", ns_) << "empty uri");
+      ROS_ERROR_STREAM(GetLogPrefix("AstraAdvancedDriver", ns_) << "empty uri");
       device_ = nullptr;
     }
   }
   catch (const AstraException& exception)
   {
-    ROS_ERROR_STREAM(GetLogPrefix("initDevice", ns_) << "No matching device found.... waiting for devices. Reason: " << exception.what());
+    ROS_ERROR_STREAM(GetLogPrefix("AstraAdvancedDriver", ns_) << "No matching device found.... waiting for devices. Reason: " << exception.what());
   }
 
   if (!device_)
   {
-    ROS_ERROR_STREAM(GetLogPrefix("initDevice", ns_) << "No ui of " << device_id_ << " resolved");
+    ROS_ERROR_STREAM(GetLogPrefix("AstraAdvancedDriver", ns_) << "No uri of " << device_id_ << " resolved");
   }
   else if (!device_->isValid())
   {
     device_ = nullptr;
-    ROS_ERROR_STREAM(GetLogPrefix("initDevice", ns_) << "Could not retrieve device");
+    ROS_ERROR_STREAM(GetLogPrefix("AstraAdvancedDriver", ns_) << "Could not retrieve device");
   }
   else
-    ROS_INFO_STREAM(GetLogPrefix("initDevice", ns_) << "FINISHED");
+    ROS_INFO_STREAM(GetLogPrefix("AstraAdvancedDriver", ns_) << "FINISHED");
 
 }
 

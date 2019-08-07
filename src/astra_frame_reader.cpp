@@ -23,7 +23,9 @@ AstraFrameReader::AstraFrameReader() :
     prev_time_stamp_(0.0),
     reading_(true),
     pause_(false),
-    paused_(false)
+    paused_(false),
+    sleep_time_before_read_(20),
+    sleep_time_after_read_(60)
 {
   ros::Time::init();
   ros::NodeHandle nh;
@@ -89,7 +91,7 @@ void AstraFrameReader::ReadOneFrame(const std::string& uri, FrameContext& contex
   if (frame_contexts_.size() == 2) // Only support 2 advanced cameras running at the same time
   {
     context.TurnOnProjector(false);
-    usleep(30 * 1000);
+    usleep(sleep_time_before_read_ * 1000);
   }
 
   context.video_stream->readFrame(&context.depth_frame);
@@ -188,7 +190,7 @@ void AstraFrameReader::ReadOneFrame(const std::string& uri, FrameContext& contex
 
   if (frame_contexts_.size() == 2)
   {
-    usleep(50 * 1000);
+    usleep(sleep_time_after_read_ * 1000);
     context.TurnOnProjector(true);
   }
   else

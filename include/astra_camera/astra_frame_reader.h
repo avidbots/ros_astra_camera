@@ -65,6 +65,11 @@ public:
   }
 
   void setUseDeviceTimer(bool enable);
+  void SetSleepTime(const double sleep_time_before_read, const double sleep_time_after_read)
+  {
+    sleep_time_before_read_ = sleep_time_before_read;
+    sleep_time_after_read_ = sleep_time_after_read;
+  }
 
   void Start();
   void Stop();
@@ -86,6 +91,9 @@ private:
   ros::Publisher reset_pub_;
 
   static boost::shared_ptr<AstraFrameReader> singleton_;
+
+  double sleep_time_before_read_;
+  double sleep_time_after_read_;
 
   void ReadFrames();
   void ReadOneFrame(const std::string& uri, FrameContext& context);
