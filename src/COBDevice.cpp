@@ -166,7 +166,7 @@ int COBDevice::SendCmd(uint16_t cmd, void *cmdbuf, uint16_t cmd_len, void *reply
 #endif
 
   if (res < 0) {
-    printf("send_cmd: Output control transfer failed (%d)\n", res);
+    //printf("send_cmd: Output control transfer failed (%d)\n", res);
     return res;
   }
 

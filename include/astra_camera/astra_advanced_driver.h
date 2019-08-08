@@ -200,6 +200,7 @@ private:
 
   bool projector_control_;
   bool stop_init_;
+  bool is_resetting_;
   std::thread reset_thread_;
 };
 

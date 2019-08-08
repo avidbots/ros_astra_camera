@@ -27,7 +27,9 @@ AstraFrameReader::AstraFrameReader() :
     projector_control_pause_(false),
     projector_control_paused_(false),
     non_projector_control_pause_(false),
-    non_projector_control_paused_(false)
+    non_projector_control_paused_(false),
+    sleep_time_before_read_(20),
+    sleep_time_after_read_(60)
 {
   ros::Time::init();
   ros::NodeHandle nh;
@@ -85,7 +87,7 @@ void AstraFrameReader::ReadRgbAndDepthFrame(FrameContext& context, const bool pr
   if (projector_control)
   {
     context.TurnOnProjector(false);
-    usleep(30 * 1000);
+    usleep(sleep_time_before_read_ * 1000);
   }
 
   ReadFrame(context.ns, context.depth_video_stream, &context.depth_frame, context.depth_callback, *depth_timer_filter_, depth_prev_time_stamp_);
@@ -93,7 +95,7 @@ void AstraFrameReader::ReadRgbAndDepthFrame(FrameContext& context, const bool pr
 
   if (projector_control)
   {
-    usleep(50 * 1000);
+    usleep(sleep_time_after_read_ * 1000);
     context.TurnOnProjector(true);
   }
   else
@@ -109,7 +111,7 @@ void AstraFrameReader::ReadFrame(const std::string& ns, boost::shared_ptr<openni
   }
   int pStreamIndex(0);
   auto p = video_stream.get();
-  auto ret = openni::OpenNI::waitForAnyStream(&p, 1, &pStreamIndex, 10); // Must add this, since readFrame is a blocking method
+  auto ret = openni::OpenNI::waitForAnyStream(&p, 1, &pStreamIndex, 2); // Must add this, since readFrame is a blocking method
   if (ret != openni::STATUS_OK)
   {
     ROS_WARN_STREAM_THROTTLE(10, GetLogPrefix("AstraFrameReader", ns) << "reading frame timeout!");

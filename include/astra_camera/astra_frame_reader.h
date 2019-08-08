@@ -39,7 +39,9 @@ public:
     {
       uint16_t buf1(0), buf2(0);
       buf1 = turn_on ? 1 : 0;
-      cob_device.SendCmd(85, &buf1, 2, &buf2, 2);
+      auto ret = cob_device.SendCmd(85, &buf1, 2, &buf2, 2);
+      if (ret < 0)
+        ROS_WARN_STREAM_THROTTLE(10, GetLogPrefix("AstraFrameReader", ns) << "send_cmd: Output control transfer failed, return: " << ret);
     }
   };
 
@@ -51,6 +53,11 @@ public:
   void setDepthCallback(const std::string& uri, FrameCallbackFunction& depth_callback);
   void setColorCallback(const std::string& uri, FrameCallbackFunction& color_callback);
   void setUseDeviceTimer(bool enable);
+  void SetSleepTime(const double sleep_time_before_read, const double sleep_time_after_read)
+  {
+    sleep_time_before_read_ = sleep_time_before_read;
+    sleep_time_after_read_ = sleep_time_after_read;
+  }
 
   void Start();
   void Stop();
@@ -82,6 +89,9 @@ private:
   std::mutex non_projector_control_mutex_;
 
   static boost::shared_ptr<AstraFrameReader> singleton_;
+
+  double sleep_time_before_read_;
+  double sleep_time_after_read_;
 
   void ReadFrames(std::map<std::string, boost::shared_ptr<FrameContext>>& context, const bool pause, bool& paused, const bool projector_control);
   void ReadRgbAndDepthFrame(FrameContext& context, const bool projector_control, const int context_cnt);
