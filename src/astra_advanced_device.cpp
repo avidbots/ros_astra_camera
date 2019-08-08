@@ -35,6 +35,8 @@ AstraAdvancedDevice::~AstraAdvancedDevice()
 
   stopAllStreams();
 
+  frame_reader_->UnregisterCamera(uri_);
+
   shutdown();
 
   openni_device_->close();

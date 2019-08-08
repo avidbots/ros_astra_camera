@@ -76,11 +76,11 @@ void AstraFrameReader::ReadFrames(std::map<std::string, boost::shared_ptr<FrameC
 
   for (auto& context : contexts)
   {
-    ReadRgbAndDepthFrame(context.first, *(context.second), contexts.size() == 2 ? projector_control : false, contexts.size()); // Only support 2 projector controllable cameras running at the same time
+    ReadRgbAndDepthFrame(*(context.second), contexts.size() == 2 ? projector_control : false, contexts.size()); // Only support 2 projector controllable cameras running at the same time
   }
 }
 
-void AstraFrameReader::ReadRgbAndDepthFrame(const std::string& uri, FrameContext& context, const bool projector_control, const int context_cnt)
+void AstraFrameReader::ReadRgbAndDepthFrame(FrameContext& context, const bool projector_control, const int context_cnt)
 {
   if (projector_control)
   {
@@ -88,32 +88,8 @@ void AstraFrameReader::ReadRgbAndDepthFrame(const std::string& uri, FrameContext
     usleep(30 * 1000);
   }
 
-  if (context.depth_video_stream)
-  {
-    int pStreamIndex(0);
-    auto p = context.depth_video_stream.get();
-    auto ret = openni::OpenNI::waitForAnyStream(&p, 1, &pStreamIndex, 165); // Must add this, since readFrame is a blocking method
-    if (ret != openni::STATUS_OK)
-    {
-      ROS_ERROR_STREAM_THROTTLE(10, GetLogPrefix("AstraFrameReader", context.ns) << "reading frame timeout!");
-      return;
-    }
-
-    ReadFrame(context.ns, *context.depth_video_stream, &context.depth_frame, context.depth_callback, *depth_timer_filter_, depth_prev_time_stamp_);
-  }
-  if (context.color_video_stream)
-  {
-    int pStreamIndex(0);
-    auto p = context.color_video_stream.get();
-    auto ret = openni::OpenNI::waitForAnyStream(&p, 1, &pStreamIndex, 165); // Must add this, since readFrame is a blocking method
-    if (ret != openni::STATUS_OK)
-    {
-      ROS_ERROR_STREAM_THROTTLE(10, GetLogPrefix("AstraFrameReader", context.ns) << "reading frame timeout!");
-      return;
-    }
-
-    ReadFrame(context.ns, *context.color_video_stream, &context.color_frame, context.color_callback, *color_timer_filter_, color_prev_time_stamp_);
-  }
+  ReadFrame(context.ns, context.depth_video_stream, &context.depth_frame, context.depth_callback, *depth_timer_filter_, depth_prev_time_stamp_);
+  ReadFrame(context.ns, context.color_video_stream, &context.color_frame, context.color_callback, *color_timer_filter_, color_prev_time_stamp_);
 
   if (projector_control)
   {
@@ -124,9 +100,23 @@ void AstraFrameReader::ReadRgbAndDepthFrame(const std::string& uri, FrameContext
     usleep((1000./(6.1*context_cnt)) * 1000);
 }
 
-void AstraFrameReader::ReadFrame(const std::string& ns, openni::VideoStream& video_stream, openni::VideoFrameRef* video_frame, FrameCallbackFunction& callback, AstraTimerFilter& timer_filter, double& prev_time_stamp)
+void AstraFrameReader::ReadFrame(const std::string& ns, boost::shared_ptr<openni::VideoStream>& video_stream, openni::VideoFrameRef* video_frame, FrameCallbackFunction& callback, AstraTimerFilter& timer_filter, double& prev_time_stamp)
 {
-  video_stream.readFrame(video_frame);
+  if (!video_stream)
+  {
+    ROS_WARN_STREAM_THROTTLE(10, GetLogPrefix("AstraFrameReader", ns) << "video_stream is null!");
+    return;
+  }
+  int pStreamIndex(0);
+  auto p = video_stream.get();
+  auto ret = openni::OpenNI::waitForAnyStream(&p, 1, &pStreamIndex, 10); // Must add this, since readFrame is a blocking method
+  if (ret != openni::STATUS_OK)
+  {
+    ROS_WARN_STREAM_THROTTLE(10, GetLogPrefix("AstraFrameReader", ns) << "reading frame timeout!");
+    return;
+  }
+
+  video_stream->readFrame(video_frame);
 
   if (video_frame->isValid() && callback)
   {
@@ -241,263 +231,139 @@ void AstraFrameReader::Stop() {
   }
 }
 
-void AstraFrameReader::RegisterDepth(const std::string& uri, const std::string& ns, const std::string& serial_no, const boost::shared_ptr<openni::VideoStream>& depth_stream, const bool projector_control)
+bool AstraFrameReader::IsRegistered(const std::string& uri, const bool projector_control)
 {
-  ROS_INFO_STREAM(GetLogPrefix("AstraFrameReader", ns) << "serial_no: " << serial_no << ", projector_control: " << (int)projector_control);
-  mutex_.lock();
-  if (projector_control)
-  {
-    projector_control_pause_ = true;
-    while (!projector_control_paused_ && ros::ok()) usleep(20 * 1000);
-
-    if (projector_control_frame_contexts_.find(uri) != projector_control_frame_contexts_.end())
-    {
-      ROS_INFO_STREAM(GetLogPrefix("AstraFrameReader", ns) << "has been registered!");
-    }
-    else
-    {
-      boost::shared_ptr<FrameContext> context = boost::make_shared<FrameContext>();
-      context->ns = ns;
-      context->uri = uri;
-      context->serial_no = serial_no;
-      context->cob_device.InitDevice();                                                                                                                                                 
-      context->depth_video_stream = depth_stream;
-      context->cob_device.OpenDevice(uri.c_str());
-      context->projector_control = projector_control;
-      projector_control_frame_contexts_[uri] = context;
-      ROS_INFO_STREAM(GetLogPrefix("AstraFrameReader", ns) << "FINISHED, registered!" << ", projector_control: " << (int)projector_control);
-    }
-    projector_control_frame_contexts_[uri]->depth_video_stream = depth_stream;
-    projector_control_pause_ = false;
-  }
-  else
-  {
-    non_projector_control_pause_ = true;
-    while (!non_projector_control_paused_ && ros::ok()) usleep(20 * 1000);
-
-    if (non_projector_control_frame_contexts_.find(uri) != non_projector_control_frame_contexts_.end())
-    {
-      ROS_INFO_STREAM(GetLogPrefix("AstraFrameReader", ns) << "has been registered!");
-    }
-    else
-    {
-      boost::shared_ptr<FrameContext> context = boost::make_shared<FrameContext>();
-      context->ns = ns;
-      context->uri = uri;
-      context->serial_no = serial_no;
-      context->depth_video_stream = depth_stream;
-      context->cob_device.InitDevice();                                                                                                                                                 
-      context->cob_device.OpenDevice(uri.c_str());
-      context->projector_control = projector_control;
-      non_projector_control_frame_contexts_[uri] = context;
-      ROS_INFO_STREAM(GetLogPrefix("AstraFrameReader", ns) << "FINISHED, registered" << ", projector_control: " << (int)projector_control);
-    }
-    non_projector_control_frame_contexts_[uri]->depth_video_stream = depth_stream;
-    non_projector_control_pause_ = false;
-  }
-  mutex_.unlock();
+  auto& contexts = projector_control ? projector_control_frame_contexts_ : non_projector_control_frame_contexts_;
+  return contexts.find(uri) != contexts.end();
 }
 
-void AstraFrameReader::RegisterColor(const std::string& uri, const std::string& ns, const std::string& serial_no, const boost::shared_ptr<openni::VideoStream>& color_stream, const bool projector_control)
+void AstraFrameReader::RegisterCamera(const std::string& uri, const std::string& ns, const std::string& serial_no, const bool projector_control)
 {
-  ROS_INFO_STREAM(GetLogPrefix("AstraFrameReader", ns) << "serial_no: " << serial_no << ", projector_control: " << (int)projector_control);
-  mutex_.lock();
-  if (projector_control)
+  if (IsRegistered(uri, projector_control))
   {
-    projector_control_pause_ = true;
-    while (!projector_control_paused_ && ros::ok()) usleep(20 * 1000);
-
-    if (projector_control_frame_contexts_.find(uri) != projector_control_frame_contexts_.end())
-    {
-      ROS_INFO_STREAM(GetLogPrefix("AstraFrameReader", ns) << "has been registered!");
-    }
-    else
-    {
-      boost::shared_ptr<FrameContext> context = boost::make_shared<FrameContext>();
-      context->ns = ns;
-      context->uri = uri;
-      context->serial_no = serial_no;
-      context->color_video_stream = color_stream;
-      context->cob_device.InitDevice();                                                                                                                                                 
-      context->cob_device.OpenDevice(uri.c_str());
-      context->projector_control = projector_control;
-      projector_control_frame_contexts_[uri] = context;
-      ROS_INFO_STREAM(GetLogPrefix("AstraFrameReader", ns) << "FINISHED, registered!" << ", projector_control: " << (int)projector_control);
-    }
-    projector_control_frame_contexts_[uri]->color_video_stream = color_stream;
-    projector_control_pause_ = false;
+    ROS_INFO_STREAM(GetLogPrefix("AstraFrameReader", ns) << "has been registered!");
+    return;
   }
   else
   {
-    non_projector_control_pause_ = true;
-    while (!non_projector_control_paused_ && ros::ok()) usleep(20 * 1000);
-
-    if (non_projector_control_frame_contexts_.find(uri) != non_projector_control_frame_contexts_.end())
-    {
-      ROS_INFO_STREAM(GetLogPrefix("AstraFrameReader", ns) << "has been registered!");
-    }
-    else
-    {
-      boost::shared_ptr<FrameContext> context = boost::make_shared<FrameContext>();
-      context->ns = ns;
-      context->uri = uri;
-      context->serial_no = serial_no;
-      context->color_video_stream = color_stream;
-      context->cob_device.InitDevice();                                                                                                                                                 
-      context->cob_device.OpenDevice(uri.c_str());
-      context->projector_control = projector_control;
-      non_projector_control_frame_contexts_[uri] = context;
-      ROS_INFO_STREAM(GetLogPrefix("AstraFrameReader", ns) << "FINISHED, registered" << ", projector_control: " << (int)projector_control);
-    }
-    non_projector_control_frame_contexts_[uri]->color_video_stream = color_stream;
-    non_projector_control_pause_ = false;
+    boost::shared_ptr<FrameContext> context = boost::make_shared<FrameContext>();
+    context->ns = ns;
+    context->uri = uri;
+    context->serial_no = serial_no;
+    context->cob_device.InitDevice();                                                                                                                                                 
+    context->cob_device.OpenDevice(uri.c_str());
+    context->projector_control = projector_control;
+    auto& contexts = projector_control ? projector_control_frame_contexts_ : non_projector_control_frame_contexts_;
+    contexts[uri] = context;
+    ROS_INFO_STREAM(GetLogPrefix("AstraFrameReader", ns) << "FINISHED, registered!" << ", projector_control: " << (int)projector_control);
   }
-  mutex_.unlock();
+}
+
+void AstraFrameReader::RegisterDepth(const std::string& uri, const std::string& ns, const std::string& serial_no, const boost::shared_ptr<openni::VideoStream>& depth_video_stream, const bool projector_control)
+{
+  RegisterStream(uri, ns, serial_no, depth_video_stream, projector_control);
+}
+
+void AstraFrameReader::RegisterColor(const std::string& uri, const std::string& ns, const std::string& serial_no, const boost::shared_ptr<openni::VideoStream>& color_video_stream, const bool projector_control)
+{
+  RegisterStream(uri, ns, serial_no, color_video_stream, projector_control);
+}
+
+void AstraFrameReader::RegisterStream(const std::string& uri, const std::string& ns, const std::string& serial_no, const boost::shared_ptr<openni::VideoStream>& video_stream, const bool projector_control)
+{
+  if (!video_stream)
+  {
+    ROS_WARN_STREAM(GetLogPrefix("AstraFrameReader", ns) << "video_stream is null!");
+    return;
+  }
+
+  std::lock_guard<std::mutex> lock(projector_control ? projector_control_mutex_ : non_projector_control_mutex_);
+  auto& pause = projector_control ? projector_control_pause_ : non_projector_control_pause_;
+  auto& paused = projector_control ? projector_control_paused_ : non_projector_control_paused_;
+  pause = true;
+  while (!paused && ros::ok()) usleep(20 * 1000);
+  RegisterCamera(uri, ns, serial_no, projector_control);
+  auto& contexts = projector_control ? projector_control_frame_contexts_ : non_projector_control_frame_contexts_;
+  if (video_stream->getSensorInfo().getSensorType() == openni::SENSOR_DEPTH)
+    contexts[uri]->depth_video_stream = video_stream;
+  else if (video_stream->getSensorInfo().getSensorType() == openni::SENSOR_COLOR)
+    contexts[uri]->color_video_stream = video_stream;
+  else
+    ROS_ERROR_STREAM(GetLogPrefix("AstraFrameReader", ns) << "serial_no: " << serial_no << ", wrong video stream type! ");
+  pause = false;
+}
+
+boost::shared_ptr<AstraFrameReader::FrameContext> AstraFrameReader::GetContext(const std::string& uri)
+{
+  auto context_iter = projector_control_frame_contexts_.find(uri);
+  if (context_iter == projector_control_frame_contexts_.end())
+  {
+    context_iter = non_projector_control_frame_contexts_.find(uri);
+    if (context_iter == non_projector_control_frame_contexts_.end())
+    {
+      ROS_INFO_STREAM(GetLogPrefix("AstraFrameReader", uri) << "doesn't exist!");
+      return nullptr;
+    }
+  }
+  return context_iter->second;
+}
+
+void AstraFrameReader::UnregisterStream(const std::string& uri, const bool projector_control, boost::shared_ptr<openni::VideoStream>& video_stream)
+{
+  std::lock_guard<std::mutex> lock(projector_control ? projector_control_mutex_ : non_projector_control_mutex_);
+  auto& pause = projector_control ? projector_control_pause_ : non_projector_control_pause_;
+  pause = true;
+  auto& paused = projector_control ? projector_control_paused_ : non_projector_control_paused_;
+  while (!paused && ros::ok()) usleep(20 * 1000);
+  video_stream = nullptr;
+  ROS_INFO_STREAM(GetLogPrefix("AstraFrameReader", uri) << "FINISHED, unregistered");
+  pause = false;
 }
 
 void AstraFrameReader::UnregisterDepth(const std::string& uri)
 {
   ROS_INFO_STREAM(GetLogPrefix("AstraFrameReader", uri) << "STARTED");
-  mutex_.lock();
 
-  bool projector_control = false;
-  auto context_iter = projector_control_frame_contexts_.find(uri);
-  if (context_iter == projector_control_frame_contexts_.end())
+  auto context = GetContext(uri);
+  if (!context)
   {
-    context_iter = non_projector_control_frame_contexts_.find(uri);
-    if (context_iter == non_projector_control_frame_contexts_.end())
-    {
-      mutex_.unlock();
-      ROS_INFO_STREAM(GetLogPrefix("AstraFrameReader", uri) << "doesn't exist!");
-      return;
-    }
-    else
-    {
-      projector_control = false;
-    }
+    ROS_INFO_STREAM(GetLogPrefix("AstraFrameReader", uri) << "was not registered!");
+    return;
   }
-  else
-    projector_control = true;
 
-  if (projector_control)
-  {
-    projector_control_pause_ = true;
-    while (!projector_control_paused_ && ros::ok())
-    {
-      usleep(20 * 1000);
-    }
-
-    projector_control_frame_contexts_[uri]->depth_video_stream = nullptr;
-      
-    ROS_INFO_STREAM(GetLogPrefix("AstraFrameReader", uri) << "FINISHED, unregistered");
-
-    projector_control_pause_ = false;
-  }
-  else
-  {
-    non_projector_control_pause_ = true;
-    while (!non_projector_control_paused_ && ros::ok())
-    {
-      usleep(20 * 1000);
-    }
-
-    non_projector_control_frame_contexts_[uri]->depth_video_stream = nullptr; // release the source first
-      
-    ROS_INFO_STREAM(GetLogPrefix("AstraFrameReader", uri) << "FINISHED, unregistered");
-
-    non_projector_control_pause_ = false;
-
-  }
-  mutex_.unlock();
+  UnregisterStream(uri, context->projector_control, context->projector_control ? projector_control_frame_contexts_[uri]->depth_video_stream : non_projector_control_frame_contexts_[uri]->depth_video_stream);
 }
 
 void AstraFrameReader::UnregisterColor(const std::string& uri)
 {
   ROS_INFO_STREAM(GetLogPrefix("AstraFrameReader", uri) << "STARTED");
-  mutex_.lock();
 
-  bool projector_control = false;
-  auto context_iter = projector_control_frame_contexts_.find(uri);
-  if (context_iter == projector_control_frame_contexts_.end())
+  auto context = GetContext(uri);
+  if (!context)
   {
-    context_iter = non_projector_control_frame_contexts_.find(uri);
-    if (context_iter == non_projector_control_frame_contexts_.end())
-    {
-      mutex_.unlock();
-      ROS_INFO_STREAM(GetLogPrefix("AstraFrameReader", uri) << "doesn't exist!");
-      return;
-    }
-    else
-    {
-      projector_control = false;
-    }
+    ROS_INFO_STREAM(GetLogPrefix("AstraFrameReader", uri) << "was not registered!");
+    return;
   }
-  else
-    projector_control = true;
 
-  if (projector_control)
-  {
-    projector_control_pause_ = true;
-    while (!projector_control_paused_ && ros::ok())
-    {
-      usleep(20 * 1000);
-    }
-
-    projector_control_frame_contexts_[uri]->color_video_stream = nullptr;
-      
-    ROS_INFO_STREAM(GetLogPrefix("AstraFrameReader", uri) << "FINISHED, unregistered");
-
-    projector_control_pause_ = false;
-  }
-  else
-  {
-    non_projector_control_pause_ = true;
-    while (!non_projector_control_paused_ && ros::ok())
-    {
-      usleep(20 * 1000);
-    }
-
-    non_projector_control_frame_contexts_[uri]->color_video_stream = nullptr; // release the source first
-      
-    ROS_INFO_STREAM(GetLogPrefix("AstraFrameReader", uri) << "FINISHED, unregistered");
-
-    non_projector_control_pause_ = false;
-
-  }
-  mutex_.unlock();
+  UnregisterStream(uri, context->projector_control, context->projector_control ? projector_control_frame_contexts_[uri]->color_video_stream : non_projector_control_frame_contexts_[uri]->color_video_stream);
 }
 
 void AstraFrameReader::UnregisterCamera(const std::string& uri)
 {
   ROS_INFO_STREAM(GetLogPrefix("AstraFrameReader", uri) << "STARTED");
-  mutex_.lock();
 
-  bool projector_control = false;
-  auto context_iter = projector_control_frame_contexts_.find(uri);
-  if (context_iter == projector_control_frame_contexts_.end())
+  auto context = GetContext(uri);
+  if (!context)
   {
-    context_iter = non_projector_control_frame_contexts_.find(uri);
-    if (context_iter == non_projector_control_frame_contexts_.end())
-    {
-      mutex_.unlock();
-      ROS_INFO_STREAM(GetLogPrefix("AstraFrameReader", uri) << "doesn't exist!");
-      return;
-    }
-    else
-    {
-      projector_control = false;
-    }
+    ROS_INFO_STREAM(GetLogPrefix("AstraFrameReader", uri) << "was not registered!");
+    return;
   }
-  else
-    projector_control = true;
 
-  if (projector_control)
+  if (context->projector_control)
   {
+    std::lock_guard<std::mutex> lock(projector_control_mutex_);
     projector_control_pause_ = true;
-    while (!projector_control_paused_ && ros::ok())
-    {
-      usleep(20 * 1000);
-    }
+    while (!projector_control_paused_ && ros::ok()) usleep(20 * 1000);
 
     projector_control_frame_contexts_[uri]->TurnOnProjector(false);
     projector_control_frame_contexts_[uri]->cob_device.CloseDevice();
@@ -510,11 +376,9 @@ void AstraFrameReader::UnregisterCamera(const std::string& uri)
   }
   else
   {
+    std::lock_guard<std::mutex> lock(non_projector_control_mutex_);
     non_projector_control_pause_ = true;
-    while (!non_projector_control_paused_ && ros::ok())
-    {
-      usleep(20 * 1000);
-    }
+    while (!non_projector_control_paused_ && ros::ok()) usleep(20 * 1000);
 
     non_projector_control_frame_contexts_[uri]->TurnOnProjector(false);
     non_projector_control_frame_contexts_[uri]->cob_device.CloseDevice();
@@ -524,9 +388,45 @@ void AstraFrameReader::UnregisterCamera(const std::string& uri)
     ROS_INFO_STREAM(GetLogPrefix("AstraFrameReader", uri) << "FINISHED, unregistered");
 
     non_projector_control_pause_ = false;
-
   }
-  mutex_.unlock();
+}
+
+void AstraFrameReader::setDepthCallback(const std::string& uri, FrameCallbackFunction& depth_callback)
+{
+  auto context = GetContext(uri);
+  if (!context)
+  {
+    ROS_INFO_STREAM(GetLogPrefix("AstraFrameReader", uri) << "was not registered!");
+    return;
+  }
+
+  if (context->projector_control)
+  {
+    projector_control_frame_contexts_[uri]->depth_callback = depth_callback;
+  }
+  else
+  {
+    non_projector_control_frame_contexts_[uri]->depth_callback = depth_callback;
+  }
+}
+
+void AstraFrameReader::setColorCallback(const std::string& uri, FrameCallbackFunction& color_callback)
+{
+  auto context = GetContext(uri);
+  if (!context)
+  {
+    ROS_INFO_STREAM(GetLogPrefix("AstraFrameReader", uri) << "was not registered!");
+    return;
+  }
+
+  if (context->projector_control)
+  {
+    projector_control_frame_contexts_[uri]->color_callback = color_callback;
+  }
+  else
+  {
+    non_projector_control_frame_contexts_[uri]->color_callback = color_callback;
+  }
 }
 
 }
