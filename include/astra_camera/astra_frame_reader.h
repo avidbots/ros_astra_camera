@@ -34,6 +34,10 @@ public:
     FrameCallbackFunction depth_callback;
     FrameCallbackFunction color_callback;
     bool projector_control;
+    boost::shared_ptr<AstraTimerFilter> depth_timer_filter;
+    boost::shared_ptr<AstraTimerFilter> color_timer_filter;
+    double depth_prev_time_stamp;
+    double color_prev_time_stamp;
 
     void TurnOnProjector(const bool turn_on)
     {
@@ -72,10 +76,6 @@ public:
 
 private:
   bool user_device_timer_;
-  boost::shared_ptr<AstraTimerFilter> depth_timer_filter_;
-  double depth_prev_time_stamp_;
-  boost::shared_ptr<AstraTimerFilter> color_timer_filter_;
-  double color_prev_time_stamp_;
   bool reading_;
   bool projector_control_pause_;
   bool projector_control_paused_;

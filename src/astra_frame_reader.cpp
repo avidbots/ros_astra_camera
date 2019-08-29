@@ -19,10 +19,6 @@ boost::shared_ptr<AstraFrameReader> AstraFrameReader::singleton_;
 
 AstraFrameReader::AstraFrameReader() :
     user_device_timer_(false),
-    depth_timer_filter_(new AstraTimerFilter(TIME_FILTER_LENGTH)),
-    depth_prev_time_stamp_(0.0),
-    color_timer_filter_(new AstraTimerFilter(TIME_FILTER_LENGTH)),
-    color_prev_time_stamp_(0.0),
     reading_(true),
     projector_control_pause_(false),
     projector_control_paused_(false),
@@ -56,8 +52,16 @@ void AstraFrameReader::setUseDeviceTimer(bool enable)
 
   if (user_device_timer_)
   {
-    depth_timer_filter_->clear();
-    color_timer_filter_->clear();
+    for (auto& context : projector_control_frame_contexts_)
+    {
+      context.second->depth_timer_filter->clear();
+      context.second->color_timer_filter->clear();
+    }
+    for (auto& context : non_projector_control_frame_contexts_)
+    {
+      context.second->depth_timer_filter->clear();
+      context.second->color_timer_filter->clear();
+    }
   }
 }
 
@@ -90,8 +94,8 @@ void AstraFrameReader::ReadRgbAndDepthFrame(FrameContext& context, const bool pr
     usleep(sleep_time_before_read_ * 1000);
   }
 
-  ReadFrame(context.ns, context.depth_video_stream, &context.depth_frame, context.depth_callback, *depth_timer_filter_, depth_prev_time_stamp_);
-  ReadFrame(context.ns, context.color_video_stream, &context.color_frame, context.color_callback, *color_timer_filter_, color_prev_time_stamp_);
+  ReadFrame(context.ns, context.depth_video_stream, &context.depth_frame, context.depth_callback, *(context.depth_timer_filter), context.depth_prev_time_stamp);
+  ReadFrame(context.ns, context.color_video_stream, &context.color_frame, context.color_callback, *(context.color_timer_filter), context.color_prev_time_stamp);
 
   if (projector_control)
   {
@@ -151,7 +155,6 @@ void AstraFrameReader::ReadFrame(const std::string& ns, boost::shared_ptr<openni
 
       image->header.stamp.fromSec(corrected_timestamp);
 
-      ROS_DEBUG("Time interval between frames: %.4f ms", (float)((corrected_timestamp-prev_time_stamp)*1000.0));
       ROS_DEBUG_STREAM(GetLogPrefix("AstraFrameReader", ns) << "Time interval between frames: " << (float)((corrected_timestamp-prev_time_stamp)*1000.0) << " ms");
 
       prev_time_stamp = corrected_timestamp;
@@ -255,6 +258,11 @@ void AstraFrameReader::RegisterCamera(const std::string& uri, const std::string&
     context->cob_device.InitDevice();                                                                                                                                                 
     context->cob_device.OpenDevice(uri.c_str());
     context->projector_control = projector_control;
+    context->depth_timer_filter = boost::make_shared<AstraTimerFilter>(TIME_FILTER_LENGTH);
+    context->color_timer_filter = boost::make_shared<AstraTimerFilter>(TIME_FILTER_LENGTH);
+    context->depth_prev_time_stamp = 0.0;
+    context->color_prev_time_stamp = 0.0;
+
     auto& contexts = projector_control ? projector_control_frame_contexts_ : non_projector_control_frame_contexts_;
     contexts[uri] = context;
     ROS_INFO_STREAM(GetLogPrefix("AstraFrameReader", ns) << "FINISHED, registered!" << ", projector_control: " << (int)projector_control);

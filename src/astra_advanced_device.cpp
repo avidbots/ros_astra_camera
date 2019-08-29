@@ -91,8 +91,9 @@ void AstraAdvancedDevice::stopColorStream()
   if (color_video_stream_.get() != 0)
   {
     color_video_started_ = false;
-    frame_reader_->UnregisterDepth(uri_);
-    depth_video_stream_->stop();
+    frame_reader_->UnregisterColor(uri_);
+    frame_reader_->UnregisterCamera(uri_); // Unregister the camera after unregisted color to prevent reading depth because of the usb communication issue
+    color_video_stream_->stop();
   }
   ROS_INFO_STREAM(GetLogPrefix("AstraAdvancedDevice", ns_) << "FINISHED");
 }
