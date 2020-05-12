@@ -17,14 +17,16 @@
 namespace astra_wrapper
 {
 
-AstraAdvancedDevice::AstraAdvancedDevice(const std::string& device_URI, const std::string& ns, const std::string& serial_no) throw (AstraException) : 
+AstraAdvancedDevice::AstraAdvancedDevice(const std::string& device_URI, const std::string& ns, const std::string& serial_no, const bool projector_control) throw (AstraException) : 
   AstraDevice(device_URI, ns),
   uri_(device_URI),
   serial_no_(serial_no),
-  callback_(0)
+  depth_callback_(0),
+  color_callback_(0),
+  projector_control_(projector_control)
 {
   ROS_INFO_STREAM(GetLogPrefix("AstraAdvancedDevice", ns) << "uri: " << uri_ << ", serial_no: " << serial_no);
-  depth_frame_reader_ = AstraFrameReader::getSingleton();
+  frame_reader_ = AstraFrameReader::getSingleton();
 }
 
 AstraAdvancedDevice::~AstraAdvancedDevice()
@@ -32,6 +34,8 @@ AstraAdvancedDevice::~AstraAdvancedDevice()
   ROS_INFO_STREAM(GetLogPrefix("AstraAdvancedDevice", ns_) << "STARTED");
 
   stopAllStreams();
+
+  frame_reader_->UnregisterCamera(uri_);
 
   shutdown();
 
@@ -48,9 +52,24 @@ void AstraAdvancedDevice::startDepthStream()
   {
     stream->setMirroringEnabled(false);
     stream->start();
-    depth_frame_reader_->Register(uri_, ns_, serial_no_, stream);
-    depth_frame_reader_->setCallback(uri_, callback_);
+    frame_reader_->RegisterDepth(uri_, ns_, serial_no_, stream, projector_control_);
+    frame_reader_->setDepthCallback(uri_, depth_callback_);
     depth_video_started_ = true;
+  }
+}
+
+void AstraAdvancedDevice::startColorStream()
+{
+  ROS_INFO_STREAM(GetLogPrefix("AstraAdvancedDevice", ns_) << "STARTED");
+  boost::shared_ptr<openni::VideoStream> stream = getColorVideoStream();
+
+  if (stream)
+  {
+    stream->setMirroringEnabled(false);
+    stream->start();
+    frame_reader_->RegisterColor(uri_, ns_, serial_no_, stream, projector_control_);
+    frame_reader_->setColorCallback(uri_, color_callback_);
+    color_video_started_ = true;
   }
 }
 
@@ -60,8 +79,21 @@ void AstraAdvancedDevice::stopDepthStream()
   if (depth_video_stream_.get() != 0)
   {
     depth_video_started_ = false;
-    depth_frame_reader_->Unregister(uri_);
+    frame_reader_->UnregisterDepth(uri_);
     depth_video_stream_->stop();
+  }
+  ROS_INFO_STREAM(GetLogPrefix("AstraAdvancedDevice", ns_) << "FINISHED");
+}
+
+void AstraAdvancedDevice::stopColorStream()
+{
+  ROS_INFO_STREAM(GetLogPrefix("AstraAdvancedDevice", ns_) << "STARTED");
+  if (color_video_stream_.get() != 0)
+  {
+    color_video_started_ = false;
+    frame_reader_->UnregisterColor(uri_);
+    frame_reader_->UnregisterCamera(uri_); // Unregister the camera after unregisted color to prevent reading depth because of the usb communication issue
+    color_video_stream_->stop();
   }
   ROS_INFO_STREAM(GetLogPrefix("AstraAdvancedDevice", ns_) << "FINISHED");
 }
@@ -74,14 +106,18 @@ void AstraAdvancedDevice::setUseDeviceTimer(bool enable)
   if (color_frame_listener)
     color_frame_listener->setUseDeviceTimer(enable);
 
-  if (depth_frame_reader_)
-    depth_frame_reader_->setUseDeviceTimer(enable);
+  if (frame_reader_)
+    frame_reader_->setUseDeviceTimer(enable);
 }
 
 void AstraAdvancedDevice::setDepthFrameCallback(FrameCallbackFunction callback)
 {
-  callback_ = callback;
+  depth_callback_ = callback;
+}
+
+void AstraAdvancedDevice::setColorFrameCallback(FrameCallbackFunction callback)
+{
+  color_callback_ = callback;
 }
 
 }
-

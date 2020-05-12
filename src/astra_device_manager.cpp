@@ -253,10 +253,10 @@ boost::shared_ptr<AstraDevice> AstraDeviceManager::getAnyDevice()
   return boost::make_shared<AstraDevice>("");
 }
 
-boost::shared_ptr<AstraDevice> AstraDeviceManager::getDevice(const std::string& device_URI, const bool is_advanced, const std::string& ns, const std::string& serial_no)
+boost::shared_ptr<AstraDevice> AstraDeviceManager::getDevice(const std::string& device_URI, const bool projector_control, const std::string& ns, const std::string& serial_no)
 {
   // try catch will be done in AstraDriver::initDevice
-  return is_advanced ? boost::make_shared<AstraAdvancedDevice>(device_URI, ns, serial_no) : boost::make_shared<AstraDevice>(device_URI, ns);
+  return boost::make_shared<AstraAdvancedDevice>(device_URI, ns, serial_no, projector_control);
 }
 
 std::ostream& operator << (std::ostream& stream, const AstraDeviceManager& device_manager) {
@@ -277,6 +277,5 @@ std::ostream& operator << (std::ostream& stream, const AstraDeviceManager& devic
 
   return stream;
 }
-
 
 } //namespace openni2_wrapper
