@@ -2,6 +2,10 @@
 Changelog for package astra_camera
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+0.4.2 (2020-04-12)
+-----------
+* [Avidbots] Turned off soft filter
+
 0.2.2 (2018-03-22)
 -----------
 * Add launchfile info and reformat nicely
